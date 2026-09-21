@@ -4,35 +4,37 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>لَمْح | LAMH</title>
+
   <link rel="stylesheet" href="style.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
 
-<header>
-  <img src="assets/ministry.png" alt="وزارة التعليم">
-  
-  <div class="brand">
-    <b>لَمْح ⚡</b>
-    <small>LAMH • منصة مسابقات ذكية</small>
-  </div>
+<main class="app">
 
-  <img src="assets/school.png" alt="شعار الجهة المنظمة">
-</header>
+  <!-- رأس الصفحة -->
+  <header class="top">
+    <img src="assets/ministry.png" class="logo" alt="وزارة التعليم">
 
-<main>
+    <div class="brand">
+      <h1>لَمْح</h1>
+      <span>LAMH</span>
+      <p>صحّ أسرع… تتصدّر</p>
+    </div>
 
+    <img src="assets/school.png" class="logo" alt="شعار الجهة المنظمة">
+  </header>
+
+
+  <!-- شاشة دخول المتسابق -->
   <section id="join" class="card">
 
-    <span class="pill">
-      المسابقة الحالية • متوسطة وثانوية الشيحية
-    </span>
+    <h2>الدخول إلى المسابقة</h2>
 
-    <h1>صحّ أسرع... تتصدّر</h1>
-
-    <p>
-      أدخل بياناتك ثم انتظر لحظة الانطلاق.
-      تُحتسب صحة الإجابة أولًا ثم السرعة.
+    <p class="intro">
+      أدخل بياناتك للانضمام إلى المسابقة
     </p>
 
     <form id="joinForm">
@@ -41,8 +43,9 @@
       <input
         id="name"
         type="text"
-        placeholder="اكتب اسمك الثلاثي"
+        placeholder="اكتب الاسم الثلاثي"
         required
+        autocomplete="name"
       >
 
       <label for="phone">رقم الجوال</label>
@@ -66,51 +69,89 @@
       <input
         id="code"
         type="text"
-        placeholder="أدخل رمز المسابقة"
+        placeholder="مثال: LAMH2026"
         required
+        autocomplete="off"
       >
 
-      <button type="submit">دخول المسابقة</button>
+      <button type="submit" class="primary">
+        دخول المسابقة
+      </button>
 
     </form>
 
-    <p class="note">
-      يتم اعتماد أول إجابة فقط لكل سؤال.
+    <p id="hello" class="message"></p>
+
+  </section>
+
+
+  <!-- شاشة الانتظار -->
+  <section id="waiting" class="card hidden">
+
+    <div class="status">تم تسجيلك ✓</div>
+
+    <h2>استعد… المسابقة ستبدأ قريبًا</h2>
+
+    <p>سيبدأ السؤال تلقائيًا عند موعد المسابقة.</p>
+
+    <div id="count" class="countdown">--:--</div>
+
+    <p class="small">
+      لا تغلق هذه الصفحة
     </p>
 
   </section>
 
 
-  <section id="waiting" class="card hidden">
-    <span class="pill">تم تسجيل بياناتك ✓</span>
-    <h2 id="hello">مرحبًا</h2>
-    <p>استعد... ستبدأ المسابقة في الموعد المحدد.</p>
-    <div id="count">--</div>
-  </section>
-
-
+  <!-- شاشة الأسئلة -->
   <section id="quiz" class="card hidden">
-    <span id="qnum" class="pill"></span>
-    <h2 id="question"></h2>
-    <div id="answers"></div>
+
+    <div id="qnum" class="question-number">
+      السؤال
+    </div>
+
+    <h2 id="question">
+      جارٍ تحميل السؤال...
+    </h2>
+
+    <div id="answers" class="answers"></div>
+
+    <p class="notice">
+      اختر إجابتك بعناية — يتم اعتماد أول إجابة فقط.
+    </p>
+
   </section>
 
 
+  <!-- شاشة النهاية -->
   <section id="result" class="card hidden">
-    <span class="pill">تم إنهاء المسابقة ✓</span>
-    <h2>النتيجة</h2>
-    <p id="score"></p>
-    <div id="board" class="board"></div>
-    <button id="again" type="button">العودة للرئيسية</button>
+
+    <div class="trophy">🏆</div>
+
+    <h2>تم إنهاء المسابقة</h2>
+
+    <p id="score">
+      تم استلام إجاباتك بنجاح
+    </p>
+
+    <p>
+      سيتم ترتيب النتائج حسب صحة الإجابات ثم زمن الاستجابة.
+    </p>
+
+    <button id="again" type="button" class="secondary">
+      العودة
+    </button>
+
   </section>
+
+
+  <footer>
+    <strong>المطور والمصمم / فهد اللهيبي</strong>
+    <span>0555159521</span>
+  </footer>
 
 </main>
 
-<footer>
-  المطور والمصمم / فهد اللهيبي • 0555159521
-</footer>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="app.js"></script>
 
 </body>
