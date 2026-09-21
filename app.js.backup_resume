@@ -323,34 +323,6 @@ async function loadCompetition() {
       return;
     }
 
-    const { data: progressData, error: progressError } =
-      await db.rpc('get_participant_progress', {
-        p_participant_id: participantId
-      });
-
-    if (progressError) {
-      throw progressError;
-    }
-
-    const progress =
-      Array.isArray(progressData)
-        ? progressData[0]
-        : progressData;
-
-    const answeredIds =
-      new Set(progress?.answered_question_ids || []);
-
-    if (answeredIds.size > 0) {
-      questions = questions.filter(
-        question => !answeredIds.has(question.id)
-      );
-    }
-
-    if (questions.length === 0) {
-      finishCompetition();
-      return;
-    }
-
     const startValue =
       competition.start_at ??
       competition.starts_at ??
