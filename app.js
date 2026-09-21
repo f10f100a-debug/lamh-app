@@ -5,7 +5,7 @@
    ========================================================= */
 
 const SUPABASE_URL = 'NEXT_PUBLIC_SUPABASE_URL=https://qgfuqmturtpglngpmtau.supabase.co';
-const SUPABASE_KEY = 'ضع_sb_publishable_هنا';
+const SUPABASE_KEY = 'sb_publishable_G3ZOB1cLQmEeyvx4UjdNew_9IMSY2Vc';
 
 const db = window.supabase.createClient(
   SUPABASE_URL,
