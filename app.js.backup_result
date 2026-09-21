@@ -17,7 +17,6 @@ const db = window.supabase.createClient(
 let participantId = null;
 let competitionId = null;
 let competition = null;
-let competitionCode = null;
 
 let questions = [];
 let currentQuestion = 0;
@@ -73,7 +72,6 @@ if (joinForm) {
     const phone = cleanPhone($('#phone')?.value.trim() || '');
     const school = $('#school')?.value.trim() || '';
     const code = ($('#code')?.value.trim() || '').toUpperCase();
-    competitionCode = code;
 
     if (!fullName || !phone || !school || !code) {
       setMessage(
@@ -758,147 +756,51 @@ async function submitAnswer(
 async function finishCompetition() {
 
   clearInterval(waitingTimer);
+
   show('result');
 
   const score = $('#score');
-  const rankEl = $('#resultRank');
-  const correctEl = $('#resultCorrect');
-  const timeEl = $('#resultTime');
-  const leaderboardEl = $('#leaderboard');
 
-  if (score) score.textContent = 'جارٍ تجهيز نتيجتك...';
-  if (leaderboardEl) leaderboardEl.innerHTML = '';
+  if (score) {
+
+    score.textContent =
+      'تم استلام إجاباتك بنجاح ✓';
+  }
+
+  /*
+    محاولة قراءة ترتيب المتسابق.
+    عدم نجاح قراءة الترتيب لا يؤثر
+    على حفظ الإجابات.
+  */
 
   try {
 
-    const { data: resultData, error: resultError } =
-      await db.rpc('get_participant_result', {
-        p_participant_id: participantId
-      });
+    const { data, error } =
+      await db
+        .from('leaderboard')
+        .select('*')
+        .eq(
+          'competition_id',
+          competitionId
+        );
 
-    if (resultError) throw resultError;
+    if (!error && data) {
 
-    const result =
-      Array.isArray(resultData)
-        ? resultData[0]
-        : resultData;
-
-    if (result) {
-
-      if (score) {
-        score.textContent =
-          `أجبت بشكل صحيح عن ${result.correct_answers ?? 0} من ${result.total_questions ?? 0}`;
-      }
-
-      if (rankEl) {
-        rankEl.textContent =
-          result.rank ? `#${result.rank}` : '—';
-      }
-
-      if (correctEl) {
-        correctEl.textContent =
-          `${result.correct_answers ?? 0}/${result.total_questions ?? 0}`;
-      }
-
-      if (timeEl) {
-        const seconds =
-          Number(result.total_response_ms ?? 0) / 1000;
-
-        timeEl.textContent =
-          `${seconds.toFixed(2)} ث`;
-      }
-    }
-
-    const code =
-      competitionCode ||
-      competition?.slug ||
-      competition?.code ||
-      '';
-
-    if (code && leaderboardEl) {
-
-      const { data: leaders, error: leadersError } =
-        await db.rpc('get_competition_leaderboard', {
-          p_code: code,
-          p_limit: 5
-        });
-
-      if (
-        !leadersError &&
-        Array.isArray(leaders) &&
-        leaders.length
-      ) {
-
-        leaders.forEach((leader) => {
-
-          const row =
-            document.createElement('div');
-
-          row.className = 'leader-row';
-
-          const rank =
-            document.createElement('span');
-
-          rank.className = 'leader-rank';
-          rank.textContent = `#${leader.rank}`;
-
-          const identity =
-            document.createElement('div');
-
-          identity.className = 'leader-identity';
-
-          const name =
-            document.createElement('strong');
-
-          name.textContent =
-            leader.full_name || 'متسابق';
-
-          const school =
-            document.createElement('small');
-
-          school.textContent =
-            leader.school || '';
-
-          identity.appendChild(name);
-          identity.appendChild(school);
-
-          const resultBox =
-            document.createElement('span');
-
-          resultBox.className = 'leader-score';
-
-          resultBox.textContent =
-            `${leader.correct_answers ?? 0} صحيحة`;
-
-          row.appendChild(rank);
-          row.appendChild(identity);
-          row.appendChild(resultBox);
-
-          leaderboardEl.appendChild(row);
-        });
-
-      } else {
-
-        leaderboardEl.textContent =
-          'ستظهر قائمة المتصدرين هنا عند توفر النتائج.';
-      }
+      console.log(
+        'Leaderboard:',
+        data
+      );
     }
 
   } catch (error) {
 
-    console.error('RESULT ERROR:', error);
-
-    if (score) {
-      score.textContent =
-        'تم استلام إجاباتك بنجاح ✓';
-    }
-
-    if (leaderboardEl) {
-      leaderboardEl.textContent =
-        'تعذر تحميل الترتيب الآن، وإجاباتك محفوظة.';
-    }
+    console.log(
+      'Leaderboard unavailable:',
+      error
+    );
   }
 }
+
 
 /* =========================================================
    8 ـ العودة
@@ -917,7 +819,6 @@ if (againButton) {
       participantId = null;
       competitionId = null;
       competition = null;
-      competitionCode = null;
 
       questions = [];
       currentQuestion = 0;

@@ -69,7 +69,7 @@
       <input
         id="code"
         type="text"
-        placeholder="مثال: A1"
+        placeholder="مثال: LAMH2026"
         required
         autocomplete="off"
       >
@@ -130,46 +130,15 @@
 
     <h2>تم إنهاء المسابقة</h2>
 
-    <p id="score" class="result-summary">
-      جارٍ تجهيز نتيجتك...
+    <p id="score">
+      تم استلام إجاباتك بنجاح
     </p>
 
-    <div class="result-stats">
-
-      <div class="result-stat">
-        <span>ترتيبك</span>
-        <strong id="resultRank">—</strong>
-      </div>
-
-      <div class="result-stat">
-        <span>الصحيحة</span>
-        <strong id="resultCorrect">—</strong>
-      </div>
-
-      <div class="result-stat">
-        <span>الزمن</span>
-        <strong id="resultTime">—</strong>
-      </div>
-
-    </div>
-
-    <div class="leaderboard-box">
-
-      <h3>🏅 المتصدرون</h3>
-
-      <div id="leaderboard"
-           class="leaderboard-list"></div>
-
-    </div>
-
-    <p class="result-note">
-      الترتيب يعتمد على عدد الإجابات الصحيحة أولًا،
-      ثم إجمالي زمن الاستجابة.
+    <p>
+      سيتم ترتيب النتائج حسب صحة الإجابات ثم زمن الاستجابة.
     </p>
 
-    <button id="again"
-            type="button"
-            class="secondary">
+    <button id="again" type="button" class="secondary">
       العودة
     </button>
 
