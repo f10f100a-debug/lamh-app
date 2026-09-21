@@ -1,7 +1,117 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>لمح | LAMH</title><link rel="stylesheet" href="styles.css"></head><body>
-<header><img src="assets/ministry.png" alt="وزارة التعليم"><div class="brand"><b>لَمْح ⚡</b><small>LAMH • منصة مسابقات ذكية</small></div><img src="assets/school.png" alt="متوسطة وثانوية الشيحية"></header>
-<main><section id="join" class="card"><span class="pill">المسابقة الحالية • متوسطة وثانوية الشيحية</span><h1>صحّ أسرع… تتصدّر</h1><p>أدخل بياناتك ثم انتظر لحظة الانطلاق. تُحتسب صحة الإجابة أولًا ثم السرعة.</p><form id="joinForm"><label>الاسم الكامل<input id="name" required maxlength="60" autocomplete="name" placeholder="اكتب اسمك"></label><label>رمز المسابقة<input id="code" inputmode="numeric" maxlength="6" placeholder="مثال: 1448"></label><button>دخول المسابقة</button></form><p class="note">يتم اعتماد أول إجابة فقط لكل سؤال.</p></section>
-<section id="waiting" class="card hidden"><span class="pill">تم تسجيلك ✓</span><h2 id="hello"></h2><p>استعد… ستبدأ المسابقة عند وصول العداد إلى الصفر.</p><div class="count" id="count">00:00:10</div><div class="stats"><div><b>10</b><small>أسئلة</small></div><div><b>15ث</b><small>لكل سؤال</small></div><div><b>⚡</b><small>الأسرع يتصدر</small></div></div></section>
-<section id="quiz" class="card hidden"><div class="qtop"><span id="qnum">السؤال 1 من 3</span><span class="timer" id="timer">15.000</span></div><h2 id="question"></h2><div id="answers" class="answers"></div><p id="feedback" class="feedback" aria-live="polite"></p></section>
-<section id="result" class="card hidden"><div class="trophy">🏆</div><h2>انتهت المسابقة</h2><p id="score"></p><div id="board" class="board"></div><button id="again" class="secondary">العودة للبداية</button></section></main>
-<footer>المطور والمصمم / فهد اللهيبي • 0555159521</footer><script src="app.js"></script></body></html>
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>لَمْح | LAMH</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header>
+  <img src="assets/ministry.png" alt="وزارة التعليم">
+  
+  <div class="brand">
+    <b>لَمْح ⚡</b>
+    <small>LAMH • منصة مسابقات ذكية</small>
+  </div>
+
+  <img src="assets/school.png" alt="شعار الجهة المنظمة">
+</header>
+
+<main>
+
+  <section id="join" class="card">
+
+    <span class="pill">
+      المسابقة الحالية • متوسطة وثانوية الشيحية
+    </span>
+
+    <h1>صحّ أسرع... تتصدّر</h1>
+
+    <p>
+      أدخل بياناتك ثم انتظر لحظة الانطلاق.
+      تُحتسب صحة الإجابة أولًا ثم السرعة.
+    </p>
+
+    <form id="joinForm">
+
+      <label for="name">الاسم الثلاثي</label>
+      <input
+        id="name"
+        type="text"
+        placeholder="اكتب اسمك الثلاثي"
+        required
+      >
+
+      <label for="phone">رقم الجوال</label>
+      <input
+        id="phone"
+        type="tel"
+        inputmode="numeric"
+        placeholder="05XXXXXXXX"
+        required
+      >
+
+      <label for="school">المدرسة</label>
+      <input
+        id="school"
+        type="text"
+        placeholder="اكتب اسم المدرسة"
+        required
+      >
+
+      <label for="code">رمز المسابقة</label>
+      <input
+        id="code"
+        type="text"
+        placeholder="أدخل رمز المسابقة"
+        required
+      >
+
+      <button type="submit">دخول المسابقة</button>
+
+    </form>
+
+    <p class="note">
+      يتم اعتماد أول إجابة فقط لكل سؤال.
+    </p>
+
+  </section>
+
+
+  <section id="waiting" class="card hidden">
+    <span class="pill">تم تسجيل بياناتك ✓</span>
+    <h2 id="hello">مرحبًا</h2>
+    <p>استعد... ستبدأ المسابقة في الموعد المحدد.</p>
+    <div id="count">--</div>
+  </section>
+
+
+  <section id="quiz" class="card hidden">
+    <span id="qnum" class="pill"></span>
+    <h2 id="question"></h2>
+    <div id="answers"></div>
+  </section>
+
+
+  <section id="result" class="card hidden">
+    <span class="pill">تم إنهاء المسابقة ✓</span>
+    <h2>النتيجة</h2>
+    <p id="score"></p>
+    <div id="board" class="board"></div>
+    <button id="again" type="button">العودة للرئيسية</button>
+  </section>
+
+</main>
+
+<footer>
+  المطور والمصمم / فهد اللهيبي • 0555159521
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
