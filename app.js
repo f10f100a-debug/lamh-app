@@ -4,7 +4,7 @@
    المطور والمصمم / فهد اللهيبي
    ========================================================= */
 
-const SUPABASE_URL = 'ضع_رابط_SUPABASE_الكامل_هنا';
+const SUPABASE_URL = 'NEXT_PUBLIC_SUPABASE_URL=https://qgfuqmturtpglngpmtau.supabase.co';
 const SUPABASE_KEY = 'ضع_sb_publishable_هنا';
 
 const db = window.supabase.createClient(
