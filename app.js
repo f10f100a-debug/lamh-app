@@ -59,6 +59,13 @@ function cleanPhone(value) {
    1 ـ دخول المتسابق
    ========================================================= */
 
+const params = new URLSearchParams(window.location.search);
+const presetCode = params.get('code');
+
+if (presetCode && $('#code')) {
+  $('#code').value = presetCode.toUpperCase();
+}
+
 const joinForm = $('#joinForm');
 
 if (joinForm) {

@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>لوحة المنظم | لَمْح</title>
+  <link rel="stylesheet" href="admin.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+
+<main class="admin-app">
+
+  <header class="admin-head">
+    <div>
+      <h1>لَمْح</h1>
+      <p>لوحة تحكم المنظم</p>
+    </div>
+    <a href="index.html" class="back-link">صفحة المتسابقين</a>
+  </header>
+
+  <section id="loginView" class="panel login-panel">
+    <h2>دخول المنظم</h2>
+
+    <label>رمز المسابقة</label>
+    <input id="adminCode" value="A1" maxlength="6">
+
+    <label>رمز الإدارة</label>
+    <input id="adminPin" type="password" inputmode="numeric" maxlength="6" placeholder="••••••">
+
+    <button id="loginBtn" class="primary">دخول لوحة التحكم</button>
+    <p id="loginMsg" class="msg"></p>
+  </section>
+
+  <section id="dashboardView" class="hidden">
+
+    <div class="toolbar panel">
+      <div>
+        <strong id="dashTitle">المسابقة</strong>
+        <span id="dashCode" class="badge"></span>
+      </div>
+      <button id="refreshBtn" class="small-btn">تحديث</button>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><span>المشاركون</span><strong id="statParticipants">0</strong></div>
+      <div class="stat"><span>المكتملون</span><strong id="statCompleted">0</strong></div>
+      <div class="stat"><span>الأسئلة</span><strong id="statQuestions">0</strong></div>
+      <div class="stat"><span>الإجابات</span><strong id="statAnswers">0</strong></div>
+    </div>
+
+    <section class="panel">
+      <h2>إعدادات المسابقة</h2>
+
+      <div class="grid2">
+        <div>
+          <label>اسم المسابقة</label>
+          <input id="compTitle">
+        </div>
+
+        <div>
+          <label>الجهة المنظمة</label>
+          <input id="compOrg">
+        </div>
+
+        <div>
+          <label>وقت البداية</label>
+          <input id="compStart" type="datetime-local">
+        </div>
+
+        <div>
+          <label>مدة السؤال بالثواني</label>
+          <input id="compSeconds" type="number" min="3" max="300">
+        </div>
+
+        <div>
+          <label>حالة المسابقة</label>
+          <select id="compStatus">
+            <option value="draft">مسودة</option>
+            <option value="waiting">انتظار</option>
+            <option value="live">مباشرة</option>
+            <option value="finished">منتهية</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="saveCompetitionBtn" class="primary">حفظ الإعدادات</button>
+      <p id="settingsMsg" class="msg"></p>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <h2>رابط و QR الدخول</h2>
+        <button id="copyLinkBtn" class="small-btn">نسخ الرابط</button>
+      </div>
+
+      <input id="joinLink" readonly>
+      <div id="qrBox" class="qr-box"></div>
+      <p class="hint">عند فتح الرابط سيتم تعبئة رمز المسابقة تلقائيًا.</p>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <h2>الأسئلة</h2>
+        <button id="newQuestionBtn" class="small-btn">+ سؤال جديد</button>
+      </div>
+
+      <div id="questionsList"></div>
+    </section>
+
+    <section id="questionEditor" class="panel hidden">
+      <h2 id="questionEditorTitle">إضافة سؤال</h2>
+
+      <input id="questionId" type="hidden">
+
+      <label>ترتيب السؤال</label>
+      <input id="questionOrder" type="number" min="1">
+
+      <label>نص السؤال</label>
+      <textarea id="questionText" rows="3"></textarea>
+
+      <div class="grid2">
+        <div><label>الخيار A</label><input id="optionA"></div>
+        <div><label>الخيار B</label><input id="optionB"></div>
+        <div><label>الخيار C</label><input id="optionC"></div>
+        <div><label>الخيار D</label><input id="optionD"></div>
+      </div>
+
+      <label>الإجابة الصحيحة</label>
+      <select id="correctOption">
+        <option value="A">A</option>
+        <option value="B">B</option>
+        <option value="C">C</option>
+        <option value="D">D</option>
+      </select>
+
+      <div class="actions">
+        <button id="saveQuestionBtn" class="primary">حفظ السؤال</button>
+        <button id="cancelQuestionBtn" class="secondary">إلغاء</button>
+      </div>
+
+      <p id="questionMsg" class="msg"></p>
+    </section>
+
+    <section class="panel">
+      <h2>المتصدرون</h2>
+      <div id="adminLeaderboard"></div>
+    </section>
+
+    <section class="panel danger-zone">
+      <h2>أمان لوحة الإدارة</h2>
+
+      <label>رمز الإدارة الجديد</label>
+      <input id="newPin" type="password" inputmode="numeric" maxlength="6" placeholder="6 أرقام">
+
+      <button id="changePinBtn" class="secondary">تغيير رمز الإدارة</button>
+      <p id="pinMsg" class="msg"></p>
+    </section>
+
+  </section>
+
+</main>
+
+<script src="admin.js"></script>
+</body>
+</html>
