@@ -143,59 +143,6 @@
       <p id="questionMsg" class="msg"></p>
     </section>
 
-
-    <section class="panel">
-      <div class="section-head">
-        <h2>المشاركون</h2>
-        <button id="refreshParticipantsBtn" class="small-btn">تحديث المشاركين</button>
-      </div>
-
-      <div class="participants-toolbar">
-        <input id="participantSearch"
-               type="search"
-               placeholder="ابحث بالاسم أو الجوال أو المدرسة">
-      </div>
-
-      <div id="participantsList" class="participants-list"></div>
-    </section>
-
-    <section id="participantEditor" class="panel hidden">
-      <h2>تعديل بيانات المشارك</h2>
-
-      <input id="participantId" type="hidden">
-
-      <div class="grid2">
-        <div>
-          <label>الاسم الثلاثي</label>
-          <input id="participantName">
-        </div>
-
-        <div>
-          <label>رقم الجوال</label>
-          <input id="participantMobile"
-                 inputmode="numeric"
-                 maxlength="10">
-        </div>
-
-        <div>
-          <label>المدرسة</label>
-          <input id="participantSchool">
-        </div>
-      </div>
-
-      <div class="actions">
-        <button id="saveParticipantBtn" class="primary">
-          حفظ بيانات المشارك
-        </button>
-
-        <button id="cancelParticipantBtn" class="secondary">
-          إلغاء
-        </button>
-      </div>
-
-      <p id="participantMsg" class="msg"></p>
-    </section>
-
     <section class="panel">
       <h2>المتصدرون</h2>
       <div id="adminLeaderboard"></div>
