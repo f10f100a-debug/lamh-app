@@ -1,3 +1,5 @@
+const SUPABASE_URL = https://qgfuqmturtpglngpmtau.supabase.co
+const SUPABASE_KEY = sb_publishable_G3ZOB1cLQmEeyvx4UjdNew_9IMSY2Vc
 const $=s=>document.querySelector(s); const screens=['join','waiting','quiz','result'];
 const questions=[
  {q:'ما أكبر كواكب المجموعة الشمسية؟',a:['الأرض','المشتري','زحل','المريخ'],ok:1},
