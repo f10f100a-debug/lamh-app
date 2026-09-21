@@ -1,16 +1,349 @@
-const SUPABASE_URL = https://qgfuqmturtpglngpmtau.supabase.co
-const SUPABASE_KEY = sb_publishable_G3ZOB1cLQmEeyvx4UjdNew_9IMSY2Vc
-const $=s=>document.querySelector(s); const screens=['join','waiting','quiz','result'];
-const questions=[
- {q:'ما أكبر كواكب المجموعة الشمسية؟',a:['الأرض','المشتري','زحل','المريخ'],ok:1},
- {q:'كم عدد أضلاع الشكل السداسي؟',a:['4','5','6','8'],ok:2},
- {q:'ما عاصمة المملكة العربية السعودية؟',a:['جدة','الرياض','الدمام','أبها'],ok:1}
-];
-let qi=0, correct=0,totalMs=0,locked=false,tick=null,start=0;
-function show(id){screens.forEach(x=>$('#'+x).classList.toggle('hidden',x!==id))}
-$('#joinForm').addEventListener('submit',e=>{e.preventDefault();let n=$('#name').value.trim();if(!n)return;$('#hello').textContent=`أهلًا ${n}`;show('waiting');countdown(10)});
-function countdown(sec){let end=Date.now()+sec*1000;tick=setInterval(()=>{let d=Math.max(0,end-Date.now());let s=Math.ceil(d/1000);$('#count').textContent=`00:00:${String(s).padStart(2,'0')}`;if(d<=0){clearInterval(tick);qi=0;correct=0;totalMs=0;show('quiz');renderQ()}},50)}
-function renderQ(){locked=false;let q=questions[qi];$('#qnum').textContent=`السؤال ${qi+1} من ${questions.length}`;$('#question').textContent=q.q;$('#feedback').textContent='';$('#answers').innerHTML='';q.a.forEach((x,i)=>{let b=document.createElement('button');b.type='button';b.textContent=`${String.fromCharCode(65+i)} — ${x}`;b.addEventListener('click',()=>answer(i,b));$('#answers').appendChild(b)});start=performance.now();clearInterval(tick);tick=setInterval(()=>{let left=Math.max(0,15000-(performance.now()-start));$('#timer').textContent=(left/1000).toFixed(3);if(left<=0){clearInterval(tick);answer(-1,null)}},30)}
-function answer(i,b){if(locked)return;locked=true;clearInterval(tick);let ms=Math.min(15000,performance.now()-start);totalMs+=ms;document.querySelectorAll('#answers button').forEach(x=>x.disabled=true);if(b)b.classList.add('selected');let ok=i===questions[qi].ok;if(ok)correct++;$('#feedback').textContent=ok?`إجابة صحيحة ✓ — ${(ms/1000).toFixed(3)} ثانية`:(i<0?'انتهى الوقت':'إجابة غير صحيحة');setTimeout(()=>{qi++;qi<questions.length?renderQ():finish()},900)}
-function finish(){show('result');$('#score').textContent=`${correct} إجابات صحيحة من ${questions.length} • الزمن التراكمي ${(totalMs/1000).toFixed(3)} ثانية`;$('#board').innerHTML=`<div><b>نتيجتك</b><span>${correct}/${questions.length}</span></div><div><b>قاعدة الترتيب</b><span>الصحيح ثم الأسرع</span></div><div><b>وضع النسخة</b><span>نموذج تجريبي محلي</span></div>`}
-$('#again').addEventListener('click',()=>{clearInterval(tick);show('join')});
+const SUPABASE_URL = 'https://qgfuqmturtpgIngpm...supabase.co';
+const SUPABASE_KEY = 'ضع_هنا_نفس_sb_publishable_الذي_كان_في_السطر_الثاني';
+
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
+
+const $ = (s) => document.querySelector(s);
+
+let participantId = null;
+let competitionId = null;
+let questions = [];
+let currentQuestion = 0;
+let questionStartedAt = 0;
+let timer = null;
+
+/* إظهار شاشة */
+function show(id) {
+  ['join', 'waiting', 'quiz', 'result'].forEach(screen => {
+    const el = $('#' + screen);
+    if (el) el.classList.toggle('hidden', screen !== id);
+  });
+}
+
+/* رسائل للمستخدم */
+function message(text) {
+  const el = $('#hello');
+  if (el) el.textContent = text;
+}
+
+/* دخول المسابقة */
+$('#joinForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const name = $('#name')?.value.trim();
+  const phone = $('#phone')?.value.trim();
+  const school = $('#school')?.value.trim();
+  const code = $('#code')?.value.trim().toUpperCase();
+
+  if (!name || !phone || !school || !code) {
+    message('يرجى تعبئة الاسم الثلاثي ورقم الجوال والمدرسة ورمز المسابقة.');
+    return;
+  }
+
+  message('جارٍ التحقق من المسابقة...');
+
+  try {
+    const { data, error } = await supabaseClient.rpc(
+      'join_competition',
+      {
+        p_name: name,
+        p_phone: phone,
+        p_school: school,
+        p_code: code
+      }
+    );
+
+    if (error) throw error;
+
+    const result = Array.isArray(data) ? data[0] : data;
+
+    participantId =
+      result?.participant_id ||
+      result?.participantId ||
+      result?.id;
+
+    competitionId =
+      result?.competition_id ||
+      result?.competitionId;
+
+    if (!participantId) {
+      throw new Error('لم يتم إنشاء تسجيل المتسابق.');
+    }
+
+    $('#hello').textContent = `مرحبًا ${name}`;
+    show('waiting');
+
+    await loadCompetition();
+
+  } catch (err) {
+    console.error(err);
+    message(
+      err?.message ||
+      'تعذر الدخول إلى المسابقة. تأكد من رمز المسابقة والبيانات.'
+    );
+  }
+});
+
+/* تحميل المسابقة */
+async function loadCompetition() {
+
+  if (!competitionId) return;
+
+  try {
+
+    const { data: competition, error } = await supabaseClient
+      .from('competitions')
+      .select('*')
+      .eq('id', competitionId)
+      .single();
+
+    if (error) throw error;
+
+    const { data: questionData, error: questionError } =
+      await supabaseClient
+        .from('questions')
+        .select('*')
+        .eq('competition_id', competitionId)
+        .order('question_order', { ascending: true });
+
+    if (questionError) throw questionError;
+
+    questions = questionData || [];
+
+    if (!questions.length) {
+      const count = $('#count');
+      if (count) count.textContent = 'بانتظار إضافة الأسئلة';
+      return;
+    }
+
+    const startTime =
+      competition.start_at ||
+      competition.starts_at ||
+      competition.start_time;
+
+    if (!startTime) {
+      startQuiz();
+      return;
+    }
+
+    startWaitingCountdown(new Date(startTime).getTime());
+
+  } catch (err) {
+    console.error(err);
+
+    const count = $('#count');
+    if (count) {
+      count.textContent = 'تعذر تحميل المسابقة';
+    }
+  }
+}
+
+/* العد التنازلي لبداية المسابقة */
+function startWaitingCountdown(startTimestamp) {
+
+  clearInterval(timer);
+
+  const update = () => {
+
+    const remaining = startTimestamp - Date.now();
+
+    if (remaining <= 0) {
+      clearInterval(timer);
+      startQuiz();
+      return;
+    }
+
+    const totalSeconds = Math.ceil(remaining / 1000);
+
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    const count = $('#count');
+
+    if (count) {
+      count.textContent =
+        `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+  };
+
+  update();
+  timer = setInterval(update, 250);
+}
+
+/* بدء الأسئلة */
+function startQuiz() {
+
+  currentQuestion = 0;
+
+  show('quiz');
+
+  renderQuestion();
+}
+
+/* عرض السؤال */
+function renderQuestion() {
+
+  const question = questions[currentQuestion];
+
+  if (!question) {
+    finishCompetition();
+    return;
+  }
+
+  const qnum = $('#qnum');
+  const questionEl = $('#question');
+  const answersEl = $('#answers');
+
+  if (qnum) {
+    qnum.textContent =
+      `السؤال ${currentQuestion + 1} من ${questions.length}`;
+  }
+
+  if (questionEl) {
+    questionEl.textContent =
+      question.question_text ||
+      question.text ||
+      question.question ||
+      '';
+  }
+
+  if (!answersEl) return;
+
+  answersEl.innerHTML = '';
+
+  let answers =
+    question.options ||
+    question.answers ||
+    [];
+
+  if (typeof answers === 'string') {
+    try {
+      answers = JSON.parse(answers);
+    } catch {
+      answers = [];
+    }
+  }
+
+  answers.forEach((answer, index) => {
+
+    const button = document.createElement('button');
+
+    button.type = 'button';
+    button.className = 'answer';
+
+    button.textContent =
+      typeof answer === 'object'
+        ? answer.text
+        : answer;
+
+    button.addEventListener('click', () => {
+      submitAnswer(question, index, button);
+    });
+
+    answersEl.appendChild(button);
+  });
+
+  questionStartedAt = performance.now();
+}
+
+/* إرسال الإجابة */
+async function submitAnswer(question, answerIndex, button) {
+
+  const buttons = document.querySelectorAll('#answers button');
+
+  buttons.forEach(btn => btn.disabled = true);
+
+  const clientElapsedMs =
+    Math.round(performance.now() - questionStartedAt);
+
+  button.classList.add('selected');
+
+  try {
+
+    const { data, error } = await supabaseClient.rpc(
+      'submit_answer',
+      {
+        p_participant_id: participantId,
+        p_question_id: question.id,
+        p_answer_index: answerIndex
+      }
+    );
+
+    if (error) throw error;
+
+    console.log(
+      'Answer accepted',
+      data,
+      clientElapsedMs
+    );
+
+    setTimeout(() => {
+
+      currentQuestion++;
+
+      if (currentQuestion >= questions.length) {
+        finishCompetition();
+      } else {
+        renderQuestion();
+      }
+
+    }, 500);
+
+  } catch (err) {
+
+    console.error(err);
+
+    alert(
+      err?.message ||
+      'حدث خطأ أثناء تسجيل الإجابة.'
+    );
+
+    buttons.forEach(btn => btn.disabled = false);
+  }
+}
+
+/* إنهاء المسابقة */
+async function finishCompetition() {
+
+  clearInterval(timer);
+
+  show('result');
+
+  const score = $('#score');
+
+  if (score) {
+    score.textContent =
+      'تم استلام إجاباتك بنجاح ✓';
+  }
+
+  try {
+
+    const { data, error } = await supabaseClient
+      .from('leaderboard')
+      .select('*')
+      .eq('competition_id', competitionId);
+
+    if (!error && data) {
+      console.log('Leaderboard:', data);
+    }
+
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+/* إعادة الشاشة الرئيسية */
+$('#again')?.addEventListener('click', () => {
+
+  clearInterval(timer);
+
+  participantId = null;
+  competitionId = null;
+  questions = [];
+  currentQuestion = 0;
+
+  show('join');
+});
