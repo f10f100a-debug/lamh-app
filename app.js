@@ -273,6 +273,8 @@ async function loadCompetition() {
     if(error) throw error;
     competition=Array.isArray(data)?data[0]:data;
     if(!competition) throw new Error('المسابقة غير موجودة.');
+    const schoolLogo=competition.organization_logo_data_uri||competition.logo_data_uri||competition.logo_url;
+    if(schoolLogo) document.querySelectorAll('header.top img.logo').forEach(img=>{if(img.alt!=='وزارة التعليم') img.src=schoolLogo;});
     if(competition.status==='finished') return finishCompetition();
     if(competition.status==='live') return startQuiz();
     const start=competition.start_at?new Date(competition.start_at).getTime():NaN;
