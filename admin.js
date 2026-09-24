@@ -398,7 +398,7 @@ function renderParticipants(items){
     resetBtn.textContent='تصفير المحاولة';
     resetBtn.onclick=()=>resetParticipant(p);
 
-    actions.append(editBtn,resetBtn);
+    const deleteBtn=document.createElement('button'); deleteBtn.className='small-btn danger-btn'; deleteBtn.textContent='حذف'; deleteBtn.onclick=()=>deleteParticipant(p); actions.append(editBtn,resetBtn,deleteBtn);
 
     row.append(head,stats,actions);
     box.appendChild(row);
@@ -406,7 +406,7 @@ function renderParticipants(items){
 }
 
 function editParticipant(p){
-  $('#participantId').value=p.participant_id;
+  $('#participantId').value=p.id;
   $('#participantName').value=p.full_name||'';
   $('#participantMobile').value=p.mobile||'';
   $('#participantSchool').value=p.school||'';
@@ -429,7 +429,7 @@ async function resetParticipant(p){
     const {error}=await db.rpc('admin_reset_participant',{
       p_code:adminCode,
       p_pin:adminPin,
-      p_participant_id:p.participant_id
+      p_participant_id:p.id
     });
 
     if(error)throw error;
@@ -525,3 +525,49 @@ $('#participantSearch')?.addEventListener('input',e=>{
 const params=new URLSearchParams(location.search);
 const preset=params.get('code');
 if(preset)$('#adminCode').value=preset.toUpperCase();
+
+
+async function deleteParticipant(p){
+  if(!confirm(`حذف المشارك ${p.full_name} نهائيًا؟`)) return;
+  try{
+    const {error}=await db.rpc('admin_delete_participant',{p_code:adminCode,p_pin:adminPin,p_participant_id:p.id});
+    if(error) throw error;
+    await Promise.all([loadParticipants(),loadDashboard()]);
+  }catch(e){alert(e.message||'تعذر حذف المشارك.');}
+}
+
+$('#clearParticipantsBtn')?.addEventListener('click',async()=>{
+  if(!confirm('سيتم حذف جميع المشاركين وإجاباتهم ومحاولاتهم. هل أنت متأكد؟')) return;
+  try{
+    const {error}=await db.rpc('admin_clear_participants',{p_code:adminCode,p_pin:adminPin});
+    if(error) throw error;
+    await Promise.all([loadParticipants(),loadDashboard()]);
+    alert('تم مسح المشاركين وتجهيز المسابقة ✓');
+  }catch(e){alert(e.message||'تعذر المسح.');}
+});
+
+$('#clearQuestionsBtn')?.addEventListener('click',async()=>{
+  if(!confirm('سيتم حذف جميع الأسئلة والإجابات والجلسات. هل أنت متأكد؟')) return;
+  try{
+    const {error}=await db.rpc('admin_clear_questions',{p_code:adminCode,p_pin:adminPin});
+    if(error) throw error;
+    await loadDashboard();
+    alert('تم مسح الأسئلة ✓');
+  }catch(e){alert(e.message||'تعذر المسح.');}
+});
+
+$('#logoInput')?.addEventListener('change',async(e)=>{
+  const file=e.target.files?.[0]; if(!file)return;
+  if(!file.type.startsWith('image/')){alert('اختر صورة فقط.');return;}
+  if(file.size>750*1024){alert('حجم الشعار يجب ألا يتجاوز 750KB.');e.target.value='';return;}
+  const reader=new FileReader();
+  reader.onload=async()=>{
+    try{
+      const {error}=await db.rpc('admin_set_competition_logo',{p_code:adminCode,p_pin:adminPin,p_logo_data_uri:reader.result});
+      if(error) throw error;
+      msg('#logoMsg','تم تحديث شعار الجهة ✓');
+      await loadDashboard();
+    }catch(err){msg('#logoMsg',err.message||'تعذر حفظ الشعار.',true);}
+  };
+  reader.readAsDataURL(file);
+});
