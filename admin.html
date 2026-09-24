@@ -86,7 +86,7 @@
       </div>
 
       <button id="saveCompetitionBtn" class="primary">حفظ الإعدادات</button>
-      <p id="settingsMsg" class="msg"></p>
+      <p id="settingsMsg" class="msg"></p><label>شعار الجهة المنظمة</label><input id="logoInput" type="file" accept="image/*"><p id="logoMsg" class="msg"></p>
     </section>
 
     <section class="panel">
@@ -103,7 +103,7 @@
     <section class="panel">
       <div class="section-head">
         <h2>الأسئلة</h2>
-        <button id="newQuestionBtn" class="small-btn">+ سؤال جديد</button>
+        <div class="actions"><button id="newQuestionBtn" class="small-btn">+ سؤال جديد</button><button id="clearQuestionsBtn" class="small-btn danger-btn">مسح كل الأسئلة</button></div>
       </div>
 
       <div id="questionsList"></div>
@@ -147,7 +147,7 @@
     <section class="panel">
       <div class="section-head">
         <h2>المشاركون</h2>
-        <button id="refreshParticipantsBtn" class="small-btn">تحديث المشاركين</button>
+        <div class="actions"><button id="refreshParticipantsBtn" class="small-btn">تحديث المشاركين</button><button id="clearParticipantsBtn" class="small-btn danger-btn">مسح المشاركين</button></div>
       </div>
 
       <div class="participants-toolbar">
