@@ -571,3 +571,16 @@ $('#logoInput')?.addEventListener('change',async(e)=>{
   };
   reader.readAsDataURL(file);
 });
+
+$('#sendNotifyBtn')?.addEventListener('click',async()=>{
+  const title=$('#notifyTitle').value.trim(), body=$('#notifyBody').value.trim(), kind=$('#notifyKind').value;
+  if(!title||!body){msg('#notifyMsg','اكتب عنوان ونص التنبيه.',true);return;}
+  const btn=$('#sendNotifyBtn'); btn.disabled=true; msg('#notifyMsg','جارٍ تجهيز التنبيه...');
+  try{
+    const {error}=await db.rpc('admin_queue_notification',{p_code:adminCode,p_pin:adminPin,p_title:title,p_body:body,p_kind:kind});
+    if(error)throw error;
+    msg('#notifyMsg','تم وضع التنبيه في طابور الإرسال ✓');
+    $('#notifyBody').value='';
+  }catch(e){msg('#notifyMsg',e.message||'تعذر إنشاء التنبيه.',true);}
+  finally{btn.disabled=false;}
+});
