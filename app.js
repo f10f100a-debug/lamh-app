@@ -268,138 +268,29 @@ if (joinForm) {
    ========================================================= */
 
 async function loadCompetition() {
-
   try {
-
-    if (!competition) {
-
-      const { data, error } = await db
-        .from('competitions')
-        .select('*')
-        .eq('id', competitionId)
-        .single();
-
-      if (error) {
-        throw error;
-      }
-
-      competition = data;
-    }
-
-    const { data: questionData, error: questionError } =
-      await db
-        .from('questions')
-        .select('*')
-        .eq('competition_id', competitionId);
-
-    if (questionError) {
-      throw questionError;
-    }
-
-    questions = questionData || [];
-
-    /*
-      ترتيب مرن حسب العمود الموجود.
-    */
-
-    questions.sort((a, b) => {
-
-      const aOrder =
-        a.question_order ??
-        a.position ??
-        a.order_no ??
-        a.sort_order ??
-        0;
-
-      const bOrder =
-        b.question_order ??
-        b.position ??
-        b.order_no ??
-        b.sort_order ??
-        0;
-
-      return aOrder - bOrder;
-    });
-
-    if (questions.length === 0) {
-
-      const count = $('#count');
-
-      if (count) {
-        count.textContent = 'بانتظار إضافة الأسئلة';
-      }
-
-      return;
-    }
-
-    const { data: progressData, error: progressError } =
-      await db.rpc('get_participant_progress', {
-        p_participant_id: participantId
-      });
-
-    if (progressError) {
-      throw progressError;
-    }
-
-    const progress =
-      Array.isArray(progressData)
-        ? progressData[0]
-        : progressData;
-
-    const answeredIds =
-      new Set(progress?.answered_question_ids || []);
-
-    if (answeredIds.size > 0) {
-      questions = questions.filter(
-        question => !answeredIds.has(question.id)
-      );
-    }
-
-    if (questions.length === 0) {
-      finishCompetition();
-      return;
-    }
-
-    const startValue =
-      competition.start_at ??
-      competition.starts_at ??
-      competition.start_time ??
-      null;
-
-    if (!startValue) {
-
-      startQuiz();
-      return;
-    }
-
-    const startTimestamp =
-      new Date(startValue).getTime();
-
-    if (Number.isNaN(startTimestamp)) {
-
-      startQuiz();
-      return;
-    }
-
-    if (Date.now() >= startTimestamp) {
-
-      startQuiz();
-      return;
-    }
-
-    startWaitingCountdown(startTimestamp);
-
-  } catch (error) {
-
-    console.error('LOAD ERROR:', error);
-
-    const count = $('#count');
-
-    if (count) {
-      count.textContent =
-        'تعذر تحميل بيانات المسابقة';
-    }
-  }
+    const {data,error}=await db.rpc('get_public_competition',{p_code:competitionCode});
+    if(error) throw error;
+    competition=Array.isArray(data)?data[0]:data;
+    if(!competition) throw new Error('المسابقة غير موجودة.');
+    if(competition.status==='finished') return finishCompetition();
+    if(competition.status==='live') return startQuiz();
+    const start=competition.start_at?new Date(competition.start_at).getTime():NaN;
+    if(!Number.isNaN(start)&&Date.now()<start){show('waiting');startWaitingCountdown(start);startWaitingPolling();return;}
+    startWaitingPolling();
+  }catch(e){console.error('LOAD ERROR',e);setMessage(e.message||'تعذر تحميل المسابقة.',true);show('join');}
+}
+function startWaitingPolling(){
+  clearInterval(waitingTimer);
+  waitingTimer=setInterval(async()=>{
+    try{
+      const {data,error}=await db.rpc('get_public_competition',{p_code:competitionCode});
+      if(error) throw error;
+      competition=Array.isArray(data)?data[0]:data;
+      if(competition?.status==='live'){clearInterval(waitingTimer);await startQuiz();}
+      else if(competition?.status==='finished'){clearInterval(waitingTimer);await finishCompetition();}
+    }catch(e){console.warn('WAIT POLL',e);}
+  },2000);
 }
 
 
@@ -472,15 +363,10 @@ function startWaitingCountdown(startTimestamp) {
    4 ـ بدء المسابقة
    ========================================================= */
 
-function startQuiz() {
-
+async function startQuiz(){
   clearInterval(waitingTimer);
-
-  currentQuestion = 0;
-
   show('quiz');
-
-  renderQuestion();
+  await renderQuestion();
 }
 
 
@@ -545,85 +431,45 @@ function getQuestionOptions(question) {
 }
 
 
-function renderQuestion() {
-
-  const question =
-    questions[currentQuestion];
-
-  if (!question) {
-
-    finishCompetition();
-    return;
-  }
-
-  const qnum = $('#qnum');
-  const questionElement = $('#question');
-  const answersElement = $('#answers');
-
-  if (qnum) {
-
-    qnum.textContent =
-      `السؤال ${currentQuestion + 1} من ${questions.length}`;
-  }
-
-  if (questionElement) {
-
-    questionElement.textContent =
-      getQuestionText(question);
-  }
-
-  if (!answersElement) return;
-
-  answersElement.innerHTML = '';
-
-  const options =
-    getQuestionOptions(question);
-
-  if (options.length === 0) {
-
-    answersElement.innerHTML =
-      '<p>لا توجد خيارات لهذا السؤال.</p>';
-
-    return;
-  }
-
-  options.forEach((option, index) => {
-
-    const button =
-      document.createElement('button');
-
-    button.type = 'button';
-    button.className = 'answer';
-
-    button.textContent =
-      typeof option === 'object'
-        ? (
-            option.text ??
-            option.label ??
-            option.value ??
-            `الخيار ${index + 1}`
-          )
-        : String(option);
-
-    button.addEventListener(
-      'click',
-      () => submitAnswer(
-        question,
-        index,
-        button
-      )
-    );
-
-    answersElement.appendChild(button);
-  });
-
-  /*
-    يبدأ قياس زمن الاستجابة
-    لحظة ظهور السؤال.
-  */
-
-  questionStartedAt =
-    performance.now();
+async function renderQuestion(){
+  try{
+    const {data,error}=await db.rpc('get_current_question',{p_participant_id:participantId});
+    if(error) throw error;
+    const r=Array.isArray(data)?data[0]:data;
+    if(r?.completed) return finishCompetition();
+    const q=r?.question;
+    if(!q) throw new Error('تعذر تحميل السؤال.');
+    let session=r;
+    if(r.needs_start){
+      const started=await db.rpc('start_question_session',{p_participant_id:participantId,p_question_id:q.id});
+      if(started.error) throw started.error;
+      session=Array.isArray(started.data)?started.data[0]:started.data;
+    }
+    currentQuestion=q;
+    const qnum=$('#qnum'),qe=$('#question'),ae=$('#answers');
+    if(qnum)qnum.textContent=`السؤال ${q.order||q.question_order}`;
+    if(qe)qe.textContent=q.text||q.question_text||'';
+    if(ae)ae.innerHTML='';
+    [q.option_a,q.option_b,q.option_c,q.option_d].forEach((option,index)=>{
+      if(option==null)return;
+      const b=document.createElement('button');b.type='button';b.className='answer';b.textContent=String(option);
+      b.onclick=()=>submitAnswer(q,index,b);ae?.appendChild(b);
+    });
+    questionStartedAt=performance.now();
+    startServerQuestionCountdown(session.expires_at,q.id);
+  }catch(e){console.error('QUESTION ERROR',e);setMessage(e.message||'تعذر تحميل السؤال.',true);}
+}
+function startServerQuestionCountdown(expiresAt,qid){
+  clearInterval(waitingTimer);
+  let timer=$('#questionTimer');
+  if(!timer){timer=document.createElement('div');timer.id='questionTimer';timer.className='countdown';$('#quiz')?.insertBefore(timer,$('#question'));}
+  const tick=()=>{const remain=new Date(expiresAt).getTime()-Date.now();timer.textContent=`${Math.max(0,Math.ceil(remain/1000))} ث`;if(remain<=0){clearInterval(waitingTimer);expireServerQuestion(qid);}};
+  tick();waitingTimer=setInterval(tick,100);
+}
+async function expireServerQuestion(qid){
+  if(submitting)return;submitting=true;
+  try{const {error}=await db.rpc('expire_question_session',{p_participant_id:participantId,p_question_id:qid});if(error)throw error;submitting=false;await renderQuestion();}
+  catch(e){submitting=false;console.error('EXPIRE ERROR',e);}
 }
 
 
@@ -631,130 +477,18 @@ function renderQuestion() {
    6 ـ إرسال الإجابة
    ========================================================= */
 
-async function submitAnswer(
-  question,
-  selectedIndex,
-  selectedButton
-) {
-
-  if (submitting) return;
-
-  submitting = true;
-
-  const responseMs =
-    Math.max(
-      0,
-      Math.round(
-        performance.now() -
-        questionStartedAt
-      )
-    );
-
-  const buttons =
-    document.querySelectorAll(
-      '#answers button'
-    );
-
-  buttons.forEach(button => {
-    button.disabled = true;
-  });
-
-  selectedButton?.classList.add(
-    'selected'
-  );
-
-  try {
-
-    /*
-      الدالة التي تحققنا منها فعليًا:
-
-      submit_answer(
-        p_participant_id uuid,
-        p_question_id uuid,
-        p_selected_index integer,
-        p_response_ms ...
-      )
-    */
-
-    const { data, error } =
-      await db.rpc(
-        'submit_answer',
-        {
-          p_participant_id:
-            participantId,
-
-          p_question_id:
-            question.id,
-
-          p_selected_index:
-            selectedIndex,
-
-          p_response_ms:
-            responseMs
-        }
-      );
-
-    if (error) {
-      throw error;
-    }
-
-    console.log(
-      'submit_answer:',
-      data
-    );
-
-    /*
-      لا نسمح بإجابة ثانية.
-      الانتقال للسؤال التالي بعد اعتماد الإجابة.
-    */
-
-    setTimeout(() => {
-
-      submitting = false;
-
-      currentQuestion++;
-
-      if (
-        currentQuestion >=
-        questions.length
-      ) {
-
-        finishCompetition();
-
-      } else {
-
-        renderQuestion();
-      }
-
-    }, 450);
-
-  } catch (error) {
-
-    console.error(
-      'ANSWER ERROR:',
-      error
-    );
-
-    submitting = false;
-
-    alert(
-      error?.message ||
-      'تعذر تسجيل الإجابة.'
-    );
-
-    /*
-      نعيد تفعيل الخيارات فقط
-      إذا رفض الخادم الطلب.
-    */
-
-    buttons.forEach(button => {
-      button.disabled = false;
-    });
-
-    selectedButton?.classList.remove(
-      'selected'
-    );
-  }
+async function submitAnswer(question,selectedIndex,selectedButton){
+  if(submitting)return;submitting=true;
+  const responseMs=Math.max(0,Math.round(performance.now()-questionStartedAt));
+  const buttons=document.querySelectorAll('#answers button');buttons.forEach(b=>b.disabled=true);selectedButton?.classList.add('selected');
+  try{
+    const {data,error}=await db.rpc('submit_answer',{p_participant_id:participantId,p_question_id:question.id,p_selected_index:selectedIndex,p_response_ms:responseMs});
+    if(error)throw error;
+    clearInterval(waitingTimer);
+    const r=Array.isArray(data)?data[0]:data;
+    await new Promise(res=>setTimeout(res,r?.timed_out?150:250));
+    submitting=false;await renderQuestion();
+  }catch(e){submitting=false;buttons.forEach(b=>b.disabled=false);selectedButton?.classList.remove('selected');alert(e.message||'تعذر تسجيل الإجابة.');}
 }
 
 
@@ -762,149 +496,30 @@ async function submitAnswer(
    7 ـ نهاية المسابقة
    ========================================================= */
 
-async function finishCompetition() {
-
-  clearInterval(waitingTimer);
-  show('result');
-
-  const score = $('#score');
-  const rankEl = $('#resultRank');
-  const correctEl = $('#resultCorrect');
-  const timeEl = $('#resultTime');
-  const leaderboardEl = $('#leaderboard');
-
-  if (score) score.textContent = 'جارٍ تجهيز نتيجتك...';
-  if (leaderboardEl) leaderboardEl.innerHTML = '';
-
-  try {
-
-    const { data: resultData, error: resultError } =
-      await db.rpc('get_participant_result', {
-        p_participant_id: participantId
-      });
-
-    if (resultError) throw resultError;
-
-    const result =
-      Array.isArray(resultData)
-        ? resultData[0]
-        : resultData;
-
-    if (result) {
-
-      if (score) {
-        score.textContent =
-          `أجبت بشكل صحيح عن ${result.correct_answers ?? 0} من ${result.total_questions ?? 0}`;
-      }
-
-      if (rankEl) {
-        rankEl.textContent =
-          result.rank ? `#${result.rank}` : '—';
-      }
-
-      if (correctEl) {
-        correctEl.textContent =
-          `${result.correct_answers ?? 0}/${result.total_questions ?? 0}`;
-      }
-
-      if (timeEl) {
-        const seconds =
-          Number(result.total_response_ms ?? 0) / 1000;
-
-        timeEl.textContent =
-          `${seconds.toFixed(2)} ث`;
-      }
+async function finishCompetition(){
+  clearInterval(waitingTimer);show('result');
+  const score=$('#score'),rankEl=$('#resultRank'),correctEl=$('#resultCorrect'),timeEl=$('#resultTime'),leaderboardEl=$('#leaderboard');
+  if(score)score.textContent='جارٍ تجهيز نتيجتك...';if(leaderboardEl)leaderboardEl.innerHTML='';
+  try{
+    const {data,error}=await db.rpc('get_final_result',{p_participant_id:participantId});if(error)throw error;
+    const r=Array.isArray(data)?data[0]:data;
+    if(score)score.textContent=`أجبت بشكل صحيح عن ${r?.correct??0} من ${r?.total_questions??0}`;
+    if(rankEl)rankEl.textContent=r?.rank?`#${r.rank}`:'—';
+    if(correctEl)correctEl.textContent=`${r?.correct??0}/${r?.total_questions??0}`;
+    if(timeEl)timeEl.textContent=`${(Number(r?.total_response_ms||0)/1000).toFixed(2)} ث`;
+    if(competitionCode&&leaderboardEl){
+      const {data:leaders}=await db.rpc('get_competition_leaderboard',{p_code:competitionCode,p_limit:5});
+      if(Array.isArray(leaders)&&leaders.length)leaders.forEach(x=>{
+        const row=document.createElement('div');row.className='leader-row';
+        const rk=document.createElement('span');rk.className='leader-rank';rk.textContent=`#${x.rank}`;
+        const id=document.createElement('div');id.className='leader-identity';
+        const n=document.createElement('strong');n.textContent=x.full_name||'متسابق';
+        const s=document.createElement('small');s.textContent=x.school||'';
+        id.append(n,s);const sc=document.createElement('span');sc.className='leader-score';sc.textContent=`${x.correct_answers??0} صحيحة`;
+        row.append(rk,id,sc);leaderboardEl.appendChild(row);
+      }); else leaderboardEl.textContent='لا توجد نتائج مكتملة حتى الآن.';
     }
-
-    const code =
-      competitionCode ||
-      competition?.slug ||
-      competition?.code ||
-      '';
-
-    if (code && leaderboardEl) {
-
-      const { data: leaders, error: leadersError } =
-        await db.rpc('get_competition_leaderboard', {
-          p_code: code,
-          p_limit: 5
-        });
-
-      if (
-        !leadersError &&
-        Array.isArray(leaders) &&
-        leaders.length
-      ) {
-
-        leaders.forEach((leader) => {
-
-          const row =
-            document.createElement('div');
-
-          row.className = 'leader-row';
-
-          const rank =
-            document.createElement('span');
-
-          rank.className = 'leader-rank';
-          rank.textContent = `#${leader.rank}`;
-
-          const identity =
-            document.createElement('div');
-
-          identity.className = 'leader-identity';
-
-          const name =
-            document.createElement('strong');
-
-          name.textContent =
-            leader.full_name || 'متسابق';
-
-          const school =
-            document.createElement('small');
-
-          school.textContent =
-            leader.school || '';
-
-          identity.appendChild(name);
-          identity.appendChild(school);
-
-          const resultBox =
-            document.createElement('span');
-
-          resultBox.className = 'leader-score';
-
-          resultBox.textContent =
-            `${leader.correct_answers ?? 0} صحيحة`;
-
-          row.appendChild(rank);
-          row.appendChild(identity);
-          row.appendChild(resultBox);
-
-          leaderboardEl.appendChild(row);
-        });
-
-      } else {
-
-        leaderboardEl.textContent =
-          'ستظهر قائمة المتصدرين هنا عند توفر النتائج.';
-      }
-    }
-
-  } catch (error) {
-
-    console.error('RESULT ERROR:', error);
-
-    if (score) {
-      score.textContent =
-        'تم استلام إجاباتك بنجاح ✓';
-    }
-
-    if (leaderboardEl) {
-      leaderboardEl.textContent =
-        'تعذر تحميل الترتيب الآن، وإجاباتك محفوظة.';
-    }
-  }
+  }catch(e){console.error('RESULT ERROR',e);if(score)score.textContent='تم استلام إجاباتك بنجاح ✓';}
 }
 
 /* =========================================================
