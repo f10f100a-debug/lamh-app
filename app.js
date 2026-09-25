@@ -30,6 +30,10 @@ let waitingGeneration = 0;
 let waitingActive = false;
 let waitingPollRequest = null;
 let waitingStartTimestamp = null;
+let serverClockOffset = 0;
+let questionDeadline = 0;
+let resultPollTimer = null;
+let resultGeneration = 0;
 let submitting = false;
 
 
@@ -38,6 +42,7 @@ let submitting = false;
 const $ = (selector) => document.querySelector(selector);
 
 function show(screenId) {
+  if (screenId !== 'result') { clearTimeout(resultPollTimer); resultGeneration++; }
   ['join', 'waiting', 'quiz', 'result'].forEach(id => {
     const element = $('#' + id);
 
@@ -319,9 +324,11 @@ async function pollWaitingCompetition() {
     if (schoolLogo) document.querySelectorAll('header.top img.logo').forEach(img => {
       if (img.alt !== 'وزارة التعليم') img.src = schoolLogo;
     });
+    const serverNow = new Date(competition.server_now).getTime();
+    if (Number.isFinite(serverNow)) serverClockOffset = serverNow - Date.now();
     if (competition.status === 'finished') return finishCompetition();
     const start = competition.start_at ? new Date(competition.start_at).getTime() : NaN;
-    if (Number.isFinite(start) && start > Date.now()) {
+    if (Number.isFinite(start) && start > Date.now() + serverClockOffset) {
       startWaitingCountdown(start);
     } else if (competition.status === 'live') {
       await startQuiz();
@@ -334,7 +341,7 @@ async function pollWaitingCompetition() {
         : 'بانتظار تحديد موعد البداية من المنظم.');
     }
     const note = $('#waitingNote');
-    if (note) note.textContent = 'سيبدأ السؤال تلقائيًا عند حلول الموعد وتشغيل المسابقة.';
+    if (note) note.textContent = 'سيبدأ السؤال تلقائيًا عند حلول موعد المسابقة.';
   } catch (error) {
     if (generation !== waitingGeneration || !waitingActive) return;
     const note = $('#waitingNote');
@@ -355,12 +362,12 @@ function startWaitingCountdown(startTimestamp) {
 
 function updateWaitingCountdown() {
   if (!waitingActive || waitingStartTimestamp === null) return;
-  const remaining = waitingStartTimestamp - Date.now();
+  const remaining = waitingStartTimestamp - (Date.now() + serverClockOffset);
   if (remaining <= 0) {
     clearInterval(waitingCountdownTimer);
     waitingCountdownTimer = null;
     waitingStartTimestamp = null;
-    // The server permits question sessions only after the organizer sets live.
+    // Refresh the effective server status when a scheduled waiting period ends.
     if (competition?.status === 'live') {
       void startQuiz();
     } else {
@@ -483,20 +490,34 @@ async function renderQuestion(){
       b.onclick=()=>submitAnswer(q,index,b);ae?.appendChild(b);
     });
     questionStartedAt=performance.now();
-    startServerQuestionCountdown(session.expires_at,q.id);
+    startServerQuestionCountdown(session.expires_at,q.id,session.remaining_ms);
   }catch(e){console.error('QUESTION ERROR',e);setMessage(e.message||'تعذر تحميل السؤال.',true);}
 }
-function startServerQuestionCountdown(expiresAt,qid){
+function startServerQuestionCountdown(expiresAt,qid,remainingMs){
   clearInterval(waitingTimer);
   let timer=$('#questionTimer');
   if(!timer){timer=document.createElement('div');timer.id='questionTimer';timer.className='countdown';$('#quiz')?.insertBefore(timer,$('#question'));}
-  const tick=()=>{const remain=new Date(expiresAt).getTime()-Date.now();timer.textContent=`${Math.max(0,Math.ceil(remain/1000))} ث`;if(remain<=0){clearInterval(waitingTimer);expireServerQuestion(qid);}};
-  tick();waitingTimer=setInterval(tick,100);
+  const initial = Number.isFinite(remainingMs) ? remainingMs : new Date(expiresAt).getTime() - (Date.now() + serverClockOffset);
+  questionDeadline = performance.now() + Math.max(0, initial);
+  const tick=()=>{
+    const remain=questionDeadline-performance.now();
+    timer.textContent=`${Math.max(0,Math.ceil(remain/1000))} ث`;
+    if(remain<=0){
+      document.querySelectorAll('#answers button').forEach(b=>b.disabled=true);
+      clearInterval(waitingTimer);
+      void expireServerQuestion(qid);
+    }
+  };
+  waitingTimer=setInterval(tick,100);tick();
 }
 async function expireServerQuestion(qid){
   if(submitting)return;submitting=true;
-  try{const {error}=await db.rpc('expire_question_session',{p_participant_id:participantId,p_question_id:qid});if(error)throw error;submitting=false;await renderQuestion();}
-  catch(e){submitting=false;console.error('EXPIRE ERROR',e);}
+  try{const {data,error}=await db.rpc('expire_question_session',{p_participant_id:participantId,p_question_id:qid});if(error)throw error;submitting=false;
+    const result=Array.isArray(data)?data[0]:data;
+    if(result?.expired===false) return startServerQuestionCountdown(null,qid,result.remaining_ms);
+    await renderQuestion();
+  }
+  catch(e){submitting=false;console.error('EXPIRE ERROR',e);const timer=$('#questionTimer');if(timer)timer.textContent='جارٍ إعادة الاتصال...';waitingTimer=setTimeout(()=>expireServerQuestion(qid),2000);}
 }
 
 
@@ -515,7 +536,13 @@ async function submitAnswer(question,selectedIndex,selectedButton){
     const r=Array.isArray(data)?data[0]:data;
     await new Promise(res=>setTimeout(res,r?.timed_out?150:250));
     submitting=false;await renderQuestion();
-  }catch(e){submitting=false;buttons.forEach(b=>b.disabled=false);selectedButton?.classList.remove('selected');alert(e.message||'تعذر تسجيل الإجابة.');}
+  }catch(e){
+    submitting=false;
+    const expired=performance.now()>=questionDeadline;
+    buttons.forEach(b=>b.disabled=expired);selectedButton?.classList.remove('selected');
+    if(expired){clearInterval(waitingTimer);waitingTimer=setTimeout(()=>expireServerQuestion(question.id),1000);}
+    alert(e.message||'تعذر تسجيل الإجابة.');
+  }
 }
 
 
@@ -526,17 +553,35 @@ async function submitAnswer(question,selectedIndex,selectedButton){
 async function finishCompetition(){
   stopWaiting();
   clearInterval(waitingTimer);show('result');
+  clearTimeout(resultPollTimer);
+  const generation=++resultGeneration;
+  await refreshPublishedResult(generation);
+}
+
+function showResultDetails(visible){
+  document.querySelectorAll('#result .result-stats, #result .leaderboard-box, #result .result-note, #result .trophy').forEach(el=>el.classList.toggle('hidden',!visible));
+  const title=$('#result h2');if(title)title.textContent=visible?'نتائج المسابقة':'تم استلام إجاباتك';
+}
+
+async function refreshPublishedResult(generation){
+  if(generation!==resultGeneration)return;
+  let published=false;
+  showResultDetails(false);
   const score=$('#score'),rankEl=$('#resultRank'),correctEl=$('#resultCorrect'),timeEl=$('#resultTime'),leaderboardEl=$('#leaderboard');
-  if(score)score.textContent='جارٍ تجهيز نتيجتك...';if(leaderboardEl)leaderboardEl.innerHTML='';
+  if(score)score.textContent='بانتظار إعلان النتائج من المنظم. ستظهر هنا تلقائيًا.';if(leaderboardEl)leaderboardEl.innerHTML='';
   try{
     const {data,error}=await db.rpc('get_final_result',{p_participant_id:participantId});if(error)throw error;
+    if(generation!==resultGeneration)return;
     const r=Array.isArray(data)?data[0]:data;
+    if(r?.results_published!==true)return;
+    published=true;showResultDetails(true);
     if(score)score.textContent=`أجبت بشكل صحيح عن ${r?.correct??0} من ${r?.total_questions??0}`;
     if(rankEl)rankEl.textContent=r?.rank?`#${r.rank}`:'—';
     if(correctEl)correctEl.textContent=`${r?.correct??0}/${r?.total_questions??0}`;
     if(timeEl)timeEl.textContent=`${(Number(r?.total_response_ms||0)/1000).toFixed(2)} ث`;
     if(competitionCode&&leaderboardEl){
       const {data:leaders}=await db.rpc('get_competition_leaderboard',{p_code:competitionCode,p_limit:5});
+      if(generation!==resultGeneration)return;
       if(Array.isArray(leaders)&&leaders.length)leaders.forEach(x=>{
         const row=document.createElement('div');row.className='leader-row';
         const rk=document.createElement('span');rk.className='leader-rank';rk.textContent=`#${x.rank}`;
@@ -547,7 +592,8 @@ async function finishCompetition(){
         row.append(rk,id,sc);leaderboardEl.appendChild(row);
       }); else leaderboardEl.textContent='لا توجد نتائج مكتملة حتى الآن.';
     }
-  }catch(e){console.error('RESULT ERROR',e);if(score)score.textContent='تم استلام إجاباتك بنجاح ✓';}
+  }catch(e){if(generation!==resultGeneration)return;showResultDetails(false);published=false;if(score)score.textContent='تعذر التحقق من إعلان النتائج. سنحاول تلقائيًا...';}
+  finally{if(!published&&generation===resultGeneration)resultPollTimer=setTimeout(()=>refreshPublishedResult(generation),3000);}
 }
 
 /* =========================================================

@@ -20,9 +20,11 @@ function setup() {
     }) } },
     document: { querySelector: element, querySelectorAll: () => [], hidden: false,
       addEventListener: (name, fn) => events[name] = fn },
-    URLSearchParams, console, Date: class extends Date { static now() { return now; } },
+    URLSearchParams, console, performance: { now: () => now }, Date: class extends Date { static now() { return now; } },
     setInterval: (fn, delay) => { timers.set(++id, { fn, delay }); return id; },
-    clearInterval: handle => timers.delete(handle)
+    clearInterval: handle => timers.delete(handle),
+    clearTimeout: handle => timers.delete(handle),
+    setTimeout: (fn, delay) => { timers.set(++id, { fn, delay }); return id; }
   });
   vm.runInContext(source, context);
   context.recordStart = () => starts++;
@@ -32,7 +34,7 @@ function setup() {
     run: code => vm.runInContext(code, context),
     set: value => response = value, time: value => now = value,
     count: () => element('#count').textContent, note: () => element('#waitingNote').textContent,
-    timers, events, calls: () => calls, starts: () => starts, finishes: () => finishes
+    timers, events, text: selector => element(selector).textContent, calls: () => calls, starts: () => starts, finishes: () => finishes
   };
 }
 
@@ -45,6 +47,50 @@ test('missing/invalid dates show clear text and keep polling', async () => {
   await app.run('pollWaitingCompetition()');
   assert.match(app.count(), /بانتظار تحديد/);
   assert.equal(app.calls(), 2);
+});
+
+test('results stay hidden and polling reveals them only after publication', async () => {
+  const app=setup();
+  app.set({results_published:false,completed:true});
+  await app.run('refreshPublishedResult(resultGeneration)');
+  assert.match(app.text('#score'),/بانتظار إعلان/);
+  assert.equal(app.text('#resultRank'),'');
+  assert.equal(app.timers.size,1);
+  app.set({results_published:true,correct:3,total_questions:5,rank:2,total_response_ms:12000});
+  const callback=[...app.timers.values()][0].fn;app.timers.clear();await callback();
+  assert.equal(app.text('#resultRank'),'#2');
+  assert.match(app.text('#score'),/3 من 5/);assert.equal(app.timers.size,0);
+});
+
+test('result response fails closed when release flag is absent or request fails', async () => {
+  const app=setup();app.set({correct:5,rank:1});
+  await app.run('refreshPublishedResult(resultGeneration)');
+  assert.equal(app.text('#resultRank'),'');
+  app.set(new Error('offline'));await app.run('refreshPublishedResult(resultGeneration)');
+  assert.match(app.text('#score'),/تعذر التحقق/);
+  app.run('show("join")');assert.equal(app.run('resultGeneration'),2);
+});
+
+test('server clock controls countdown when the phone clock differs', async () => {
+  const app = setup();
+  app.set({ status: 'waiting', start_at: new Date(505000).toISOString(), server_now: new Date(500000).toISOString() });
+  await app.run('loadCompetition()'); assert.equal(app.count(), '00:05');
+});
+
+test('scheduled waiting becomes live automatically after server refresh at deadline', async () => {
+  const app = setup();
+  app.set({ status: 'waiting', start_at: new Date(101000).toISOString() });
+  await app.run('loadCompetition()');
+  app.set({ status: 'live', start_at: new Date(101000).toISOString() });
+  app.time(101000); app.run('updateWaitingCountdown()');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(app.starts(), 1); assert.equal(app.timers.size, 0);
+});
+
+test('already expired question triggers expiry once without leaking an interval', () => {
+  const app = setup();
+  app.run('let expiryCalls = 0; expireServerQuestion = async () => { expiryCalls++; }; startServerQuestionCountdown(null, "q", 0);');
+  assert.equal(app.run('expiryCalls'), 1); assert.equal(app.timers.size, 0);
 });
 
 test('polling discovers, reschedules and removes countdown without cancelling polling', async () => {
