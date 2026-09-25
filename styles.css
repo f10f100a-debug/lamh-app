@@ -512,3 +512,8 @@ footer strong {
     padding: 12px;
   }
 }
+
+/* Waiting text must wrap on narrow iPhone screens. */
+#waiting h2, #waitingNote { overflow-wrap: anywhere; }
+#count { font-variant-numeric: tabular-nums; font-size: clamp(28px, 8vw, 54px); overflow-wrap: anywhere; }
+#count.waiting-message { direction: rtl; letter-spacing: normal; font-size: 20px; line-height: 1.8; }

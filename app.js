@@ -24,6 +24,12 @@ let currentQuestion = 0;
 
 let questionStartedAt = 0;
 let waitingTimer = null;
+let waitingPollTimer = null;
+let waitingCountdownTimer = null;
+let waitingGeneration = 0;
+let waitingActive = false;
+let waitingPollRequest = null;
+let waitingStartTimestamp = null;
 let submitting = false;
 
 
@@ -267,98 +273,116 @@ if (joinForm) {
    2 ـ تحميل المسابقة والأسئلة
    ========================================================= */
 
+function stopWaiting() {
+  waitingActive = false;
+  waitingGeneration++;
+  clearInterval(waitingPollTimer);
+  clearInterval(waitingCountdownTimer);
+  waitingPollTimer = waitingCountdownTimer = null;
+  waitingPollRequest = null;
+  waitingStartTimestamp = null;
+}
+
+function setWaitingText(text, isCountdown = false) {
+  const count = $('#count');
+  if (!count) return;
+  count.textContent = text;
+  count.classList.toggle('waiting-message', !isCountdown);
+}
+
 async function loadCompetition() {
+  stopWaiting();
+  waitingActive = true;
+  show('waiting');
+  setWaitingText('جارٍ التحقق من موعد المسابقة...');
+  startWaitingPolling();
+  await pollWaitingCompetition();
+}
+
+function startWaitingPolling() {
+  clearInterval(waitingPollTimer);
+  waitingPollTimer = setInterval(pollWaitingCompetition, 2000);
+}
+
+async function pollWaitingCompetition() {
+  if (!waitingActive || waitingPollRequest) return;
+  const request = {};
+  waitingPollRequest = request;
+  const generation = waitingGeneration;
   try {
-    const {data,error}=await db.rpc('get_public_competition',{p_code:competitionCode});
-    if(error) throw error;
-    competition=Array.isArray(data)?data[0]:data;
-    if(!competition) throw new Error('المسابقة غير موجودة.');
-    const schoolLogo=competition.organization_logo_data_uri||competition.logo_data_uri||competition.logo_url;
-    if(schoolLogo) document.querySelectorAll('header.top img.logo').forEach(img=>{if(img.alt!=='وزارة التعليم') img.src=schoolLogo;});
-    if(competition.status==='finished') return finishCompetition();
-    if(competition.status==='live') return startQuiz();
-    const start=competition.start_at?new Date(competition.start_at).getTime():NaN;
-    if(!Number.isNaN(start)&&Date.now()<start){show('waiting');startWaitingCountdown(start);startWaitingPolling();return;}
-    startWaitingPolling();
-  }catch(e){console.error('LOAD ERROR',e);setMessage(e.message||'تعذر تحميل المسابقة.',true);show('join');}
+    const { data, error } = await db.rpc('get_public_competition', { p_code: competitionCode });
+    if (generation !== waitingGeneration || !waitingActive) return;
+    if (error) throw error;
+    competition = Array.isArray(data) ? data[0] : data;
+    if (!competition) throw new Error('المسابقة غير موجودة.');
+    const schoolLogo = competition.organization_logo_data_uri || competition.logo_data_uri || competition.logo_url;
+    if (schoolLogo) document.querySelectorAll('header.top img.logo').forEach(img => {
+      if (img.alt !== 'وزارة التعليم') img.src = schoolLogo;
+    });
+    if (competition.status === 'finished') return finishCompetition();
+    const start = competition.start_at ? new Date(competition.start_at).getTime() : NaN;
+    if (Number.isFinite(start) && start > Date.now()) {
+      startWaitingCountdown(start);
+    } else if (competition.status === 'live') {
+      await startQuiz();
+    } else {
+      clearInterval(waitingCountdownTimer);
+      waitingCountdownTimer = null;
+      waitingStartTimestamp = null;
+      setWaitingText(Number.isFinite(start)
+        ? 'حان الموعد، بانتظار تشغيل المسابقة من المنظم.'
+        : 'بانتظار تحديد موعد البداية من المنظم.');
+    }
+    const note = $('#waitingNote');
+    if (note) note.textContent = 'سيبدأ السؤال تلقائيًا عند حلول الموعد وتشغيل المسابقة.';
+  } catch (error) {
+    if (generation !== waitingGeneration || !waitingActive) return;
+    const note = $('#waitingNote');
+    if (note) note.textContent = 'تعذر تحديث حالة المسابقة. نحاول الاتصال تلقائيًا...';
+    if (!waitingCountdownTimer) setWaitingText('بانتظار الاتصال بالمسابقة...');
+  } finally {
+    if (waitingPollRequest === request) waitingPollRequest = null;
+  }
 }
-function startWaitingPolling(){
-  clearInterval(waitingTimer);
-  waitingTimer=setInterval(async()=>{
-    try{
-      const {data,error}=await db.rpc('get_public_competition',{p_code:competitionCode});
-      if(error) throw error;
-      competition=Array.isArray(data)?data[0]:data;
-      if(competition?.status==='live'){clearInterval(waitingTimer);await startQuiz();}
-      else if(competition?.status==='finished'){clearInterval(waitingTimer);await finishCompetition();}
-    }catch(e){console.warn('WAIT POLL',e);}
-  },2000);
-}
-
-
-/* =========================================================
-   3 ـ غرفة الانتظار
-   ========================================================= */
 
 function startWaitingCountdown(startTimestamp) {
-
-  clearInterval(waitingTimer);
-
-  function updateCountdown() {
-
-    const remaining =
-      startTimestamp - Date.now();
-
-    if (remaining <= 0) {
-
-      clearInterval(waitingTimer);
-
-      const count = $('#count');
-
-      if (count) {
-        count.textContent = 'ابدأ!';
-      }
-
-      setTimeout(startQuiz, 300);
-      return;
-    }
-
-    const totalSeconds =
-      Math.ceil(remaining / 1000);
-
-    const hours =
-      Math.floor(totalSeconds / 3600);
-
-    const minutes =
-      Math.floor((totalSeconds % 3600) / 60);
-
-    const seconds =
-      totalSeconds % 60;
-
-    const count = $('#count');
-
-    if (!count) return;
-
-    if (hours > 0) {
-
-      count.textContent =
-        `${String(hours).padStart(2, '0')}:` +
-        `${String(minutes).padStart(2, '0')}:` +
-        `${String(seconds).padStart(2, '0')}`;
-
-    } else {
-
-      count.textContent =
-        `${String(minutes).padStart(2, '0')}:` +
-        `${String(seconds).padStart(2, '0')}`;
-    }
-  }
-
-  updateCountdown();
-
-  waitingTimer =
-    setInterval(updateCountdown, 250);
+  if (waitingStartTimestamp === startTimestamp && waitingCountdownTimer) return;
+  clearInterval(waitingCountdownTimer);
+  waitingStartTimestamp = startTimestamp;
+  waitingCountdownTimer = setInterval(updateWaitingCountdown, 100);
+  updateWaitingCountdown();
 }
+
+function updateWaitingCountdown() {
+  if (!waitingActive || waitingStartTimestamp === null) return;
+  const remaining = waitingStartTimestamp - Date.now();
+  if (remaining <= 0) {
+    clearInterval(waitingCountdownTimer);
+    waitingCountdownTimer = null;
+    waitingStartTimestamp = null;
+    // The server permits question sessions only after the organizer sets live.
+    if (competition?.status === 'live') {
+      void startQuiz();
+    } else {
+      setWaitingText('حان الموعد، بانتظار تشغيل المسابقة من المنظم.');
+      void pollWaitingCompetition();
+    }
+    return;
+  }
+  const total = Math.ceil(remaining / 1000);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  const parts = hours > 0 ? [hours, minutes, seconds] : [minutes, seconds];
+  setWaitingText(parts.map(value => String(value).padStart(2, '0')).join(':'), true);
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && waitingActive) {
+    updateWaitingCountdown();
+    void pollWaitingCompetition();
+  }
+});
 
 
 /* =========================================================
@@ -366,6 +390,7 @@ function startWaitingCountdown(startTimestamp) {
    ========================================================= */
 
 async function startQuiz(){
+  stopWaiting();
   clearInterval(waitingTimer);
   show('quiz');
   await renderQuestion();
@@ -499,6 +524,7 @@ async function submitAnswer(question,selectedIndex,selectedButton){
    ========================================================= */
 
 async function finishCompetition(){
+  stopWaiting();
   clearInterval(waitingTimer);show('result');
   const score=$('#score'),rankEl=$('#resultRank'),correctEl=$('#resultCorrect'),timeEl=$('#resultTime'),leaderboardEl=$('#leaderboard');
   if(score)score.textContent='جارٍ تجهيز نتيجتك...';if(leaderboardEl)leaderboardEl.innerHTML='';
@@ -538,6 +564,7 @@ if (againButton) {
 
       clearInterval(waitingTimer);
 
+      stopWaiting();
       participantId = null;
       competitionId = null;
       competition = null;
