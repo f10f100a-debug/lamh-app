@@ -194,7 +194,7 @@ $('#loginBtn').onclick=async()=>{
 
     await loadDashboard();
     await loadParticipants();
-    if(adminRole==='owner') await loadStaff();
+    if(adminRole==='owner'){ await Promise.all([loadStaff(),loadCommercialSettings()]); }
 
     applyRoleUI();
     $('#loginView').classList.add('hidden');
@@ -804,4 +804,76 @@ async function deleteStaff(staff){
 
 $('#refreshStaffBtn')?.addEventListener('click',async()=>{
   try{await loadStaff();}catch(e){alert(e.message||'تعذر تحديث المشرفين.');}
+});
+
+
+async function loadCommercialSettings(){
+  if(adminRole!=='owner')return;
+  const {data,error}=await db.rpc('owner_get_commercial_settings',{
+    p_code:adminCode,
+    p_pin:adminPin
+  });
+  if(error)throw error;
+
+  const r=Array.isArray(data)?data[0]:data;
+  $('#bankName').value=r?.bank_name||'';
+  $('#accountName').value=r?.account_name||'';
+  $('#iban').value=r?.iban||'';
+  $('#transferNote').value=r?.transfer_note||'';
+
+  const box=$('#plansOwnerView');
+  if(!box)return;
+  box.innerHTML='';
+
+  (r?.plans||[]).forEach(plan=>{
+    const card=document.createElement('div');
+    card.className='stat';
+
+    const name=document.createElement('span');
+    name.textContent=plan.name||plan.code;
+
+    const price=document.createElement('strong');
+    price.textContent=`${Number(plan.monthly_price||0).toFixed(0)} ر.س`;
+
+    const meta=document.createElement('small');
+    meta.className='hint';
+    meta.textContent=
+      plan.code==='free'
+      ? `تجريبية • ${plan.max_questions_per_competition} سؤال • ${plan.max_participants} مشارك`
+      : `${plan.max_competitions} مسابقة • ${plan.max_questions_per_competition} سؤال • ${plan.max_participants} مشارك`;
+
+    card.append(name,price,meta);
+    box.appendChild(card);
+  });
+}
+
+$('#saveCommercialBtn')?.addEventListener('click',async()=>{
+  if(adminRole!=='owner')return;
+  const btn=$('#saveCommercialBtn');
+  btn.disabled=true;
+  msg('#commercialMsg','جارٍ الحفظ...');
+
+  try{
+    const {error}=await db.rpc('owner_update_commercial_settings',{
+      p_code:adminCode,
+      p_pin:adminPin,
+      p_bank_name:$('#bankName').value.trim(),
+      p_account_name:$('#accountName').value.trim(),
+      p_iban:$('#iban').value.trim(),
+      p_transfer_note:$('#transferNote').value.trim()
+    });
+
+    if(error)throw error;
+    msg('#commercialMsg','تم حفظ الإعدادات التجارية ✓');
+    await loadCommercialSettings();
+  }catch(e){
+    msg('#commercialMsg',e.message||'تعذر حفظ الإعدادات التجارية.',true);
+  }finally{
+    btn.disabled=false;
+  }
+});
+
+$('#refreshCommercialBtn')?.addEventListener('click',async()=>{
+  try{await loadCommercialSettings();}
+  catch(e){msg('#commercialMsg',e.message||'تعذر تحديث البيانات.',true);}
 });
