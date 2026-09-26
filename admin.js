@@ -932,6 +932,7 @@ async function loadSubscriptionRequests(){
     row.innerHTML=`
       <div style="flex:1">
         <strong>${escapeHtml(r.organization_name||'')}</strong>
+        <div class="hint">نوع الجهة: ${r.organization_type==='school'?'مدرسة':r.organization_type==='group'?'مجموعة':'جهة'}</div>
         <div class="hint">${escapeHtml(r.request_number||'')} • ${escapeHtml(r.contact_name||'')} • ${escapeHtml(r.phone||'')}</div>
         <div class="hint">الباقة الحالية:</div>
         <select class="request-plan-select" ${r.status==='approved'?'disabled':''} style="max-width:220px;margin:6px 0 8px">
