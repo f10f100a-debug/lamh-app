@@ -8,6 +8,7 @@ let adminCode='';
 let adminPin='';
 let dashboard=null;
 let adminRole='owner';
+const PLATFORM_ORG_ID='dae22392-84a6-4587-80a5-dbbde41e101d';
 
 $('#publishResultsBtn')?.addEventListener('click',async()=>{
   const published=dashboard?.competition?.results_published===true;
@@ -194,7 +195,12 @@ $('#loginBtn').onclick=async()=>{
 
     await loadDashboard();
     await loadParticipants();
-    if(adminRole==='owner'){ await Promise.all([loadStaff(),loadCommercialSettings(),loadSubscriptionRequests()]); }
+    if(adminRole==='owner'){
+      await loadStaff();
+      if(dashboard?.competition?.organization_id===PLATFORM_ORG_ID){
+        await Promise.all([loadCommercialSettings(),loadSubscriptionRequests()]);
+      }
+    }
 
     applyRoleUI();
     $('#loginView').classList.add('hidden');
@@ -667,8 +673,15 @@ $('#changeCodeBtn')?.addEventListener('click',async()=>{
 
 
 function applyRoleUI(){
+  const platformOwner=adminRole==='owner' && dashboard?.competition?.organization_id===PLATFORM_ORG_ID;
+
   document.querySelectorAll('.owner-only').forEach(el=>{
     el.classList.toggle('hidden',adminRole!=='owner');
+  });
+
+  ['commercialPanel','subscriptionRequestsPanel'].forEach(id=>{
+    const el=$('#'+id);
+    if(el) el.classList.toggle('hidden',!platformOwner);
   });
 
   const viewer=adminRole==='viewer';
