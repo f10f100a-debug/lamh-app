@@ -912,7 +912,12 @@ async function loadSubscriptionRequests(){
       <div style="flex:1">
         <strong>${escapeHtml(r.organization_name||'')}</strong>
         <div class="hint">${escapeHtml(r.request_number||'')} • ${escapeHtml(r.contact_name||'')} • ${escapeHtml(r.phone||'')}</div>
-        <div class="hint">الباقة: ${r.plan_code==='pro'?'احترافية':'مدرسة'} • الحالة: ${escapeHtml(statusLabel)}</div>
+        <div class="hint">الباقة الحالية:</div>
+        <select class="request-plan-select" ${r.status==='approved'?'disabled':''} style="max-width:220px;margin:6px 0 8px">
+          <option value="school" ${r.plan_code==='school'?'selected':''}>مدرسة — 150 ر.س</option>
+          <option value="pro" ${r.plan_code==='pro'?'selected':''}>احترافية — 200 ر.س</option>
+        </select>
+        <div class="hint">الحالة: ${escapeHtml(statusLabel)}</div>
         ${r.email?`<div class="hint">${escapeHtml(r.email)}</div>`:''}
         ${r.owner_note?`<div class="hint">ملاحظة: ${escapeHtml(r.owner_note)}</div>`:''}
         ${r.competition_code?`<div class="hint">رمز المسابقة: <strong>${escapeHtml(r.competition_code)}</strong></div>`:''}
@@ -923,6 +928,28 @@ async function loadSubscriptionRequests(){
         ${r.status!=='approved'?'<button class="small-btn approve-btn" type="button">اعتماد وتفعيل</button>':''}
         ${r.status!=='approved'&&r.status!=='rejected'?'<button class="small-btn danger-btn reject-btn" type="button">رفض</button>':''}
       </div>`;
+
+    row.querySelector('.request-plan-select')?.addEventListener('change',async(e)=>{
+      const nextPlan=e.target.value;
+      const previous=r.plan_code;
+      e.target.disabled=true;
+      try{
+        const {error}=await db.rpc('owner_change_subscription_request_plan',{
+          p_code:adminCode,
+          p_pin:adminPin,
+          p_request_id:r.id,
+          p_plan_code:nextPlan
+        });
+        if(error)throw error;
+        r.plan_code=nextPlan;
+        msg('#subscriptionRequestsMsg','تم تغيير باقة الطلب ✓');
+      }catch(err){
+        e.target.value=previous;
+        msg('#subscriptionRequestsMsg',err.message||'تعذر تغيير الباقة.',true);
+      }finally{
+        if(r.status!=='approved') e.target.disabled=false;
+      }
+    });
 
     row.querySelector('.receipt-btn')?.addEventListener('click',()=>{
       if(r.receipt_data_uri){
