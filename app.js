@@ -66,6 +66,43 @@ function cleanPhone(value) {
 }
 
 
+const SESSION_KEY='lamh_participant_session_v1';
+
+function saveParticipantSession(fullName){
+  try{
+    localStorage.setItem(SESSION_KEY,JSON.stringify({participantId,competitionId,competitionCode,fullName:fullName||'',savedAt:Date.now()}));
+  }catch(e){console.warn('SESSION SAVE',e);}
+}
+
+function clearParticipantSession(){
+  try{localStorage.removeItem(SESSION_KEY);}catch(e){}
+}
+
+async function restoreParticipantSession(){
+  try{
+    const raw=localStorage.getItem(SESSION_KEY);
+    if(!raw)return false;
+    const s=JSON.parse(raw);
+    if(!s?.participantId||!s?.competitionCode)return false;
+    const urlCode=(presetCode||'').toUpperCase();
+    if(urlCode&&urlCode!==String(s.competitionCode).toUpperCase())return false;
+    const {data,error}=await db.rpc('get_participant_progress',{p_participant_id:s.participantId});
+    if(error)throw error;
+    participantId=s.participantId;
+    competitionId=s.competitionId||data?.competition_id||null;
+    competitionCode=String(s.competitionCode).toUpperCase();
+    if($('#code'))$('#code').value=competitionCode;
+    const waitingHello=$('#waiting h2');
+    if(waitingHello)waitingHello.textContent=`أهلًا ${s.fullName||'بك'}، استعد للمسابقة`;
+    await loadCompetition();
+    return true;
+  }catch(e){
+    console.warn('SESSION RESTORE',e);
+    clearParticipantSession();
+    return false;
+  }
+}
+
 /* =========================================================
    1 ـ دخول المتسابق
    ========================================================= */
@@ -237,6 +274,8 @@ if (joinForm) {
           'لم يتم العثور على المسابقة المرتبطة بهذا الرمز.'
         );
       }
+
+      saveParticipantSession(fullName);
 
       show('waiting');
 
