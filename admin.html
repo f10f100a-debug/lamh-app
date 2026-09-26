@@ -26,8 +26,9 @@
     <label>رمز المسابقة</label>
     <input id="adminCode" value="A1" maxlength="6">
 
-    <label>رمز الإدارة / المشرف</label>
+    <label>رمز الإدارة / المشرف / المراقب</label>
     <input id="adminPin" type="password" inputmode="numeric" maxlength="6" placeholder="••••••">
+    <p class="hint">يتم تحديد الصلاحية تلقائيًا حسب رمز الدخول: مالك، مشرف، أو مراقب.</p>
 
     <button id="loginBtn" class="primary">دخول لوحة التحكم</button>
     <p id="loginMsg" class="msg"></p>
@@ -246,6 +247,6 @@
 
 </main>
 
-<script src="admin.js?v=20260926-7"></script>
+<script src="admin.js?v=20260926-8"></script>
 </body>
 </html>
