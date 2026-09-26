@@ -50,6 +50,7 @@ async function loadDashboard(){
   dashboard=Array.isArray(data)?data[0]:data;
   adminRole=dashboard?.role||adminRole||'owner';
   renderDashboard();
+  await loadSubscriptionSummary();
 }
 
 function renderDashboard(){
@@ -1011,3 +1012,55 @@ $('#refreshSubscriptionRequestsBtn')?.addEventListener('click',async()=>{
   try{await loadSubscriptionRequests();}
   catch(e){msg('#subscriptionRequestsMsg',e.message||'تعذر تحميل الطلبات.',true);}
 });
+
+
+async function loadSubscriptionSummary(){
+  const box=$('#subscriptionSummary');
+  if(!box)return;
+
+  const {data,error}=await db.rpc('admin_get_subscription_summary',{
+    p_code:adminCode,
+    p_pin:adminPin
+  });
+
+  if(error){
+    box.innerHTML='';
+    msg('#subscriptionSummaryMsg',error.message||'تعذر تحميل بيانات الاشتراك.',true);
+    return;
+  }
+
+  const r=Array.isArray(data)?data[0]:data;
+  if(!r?.available){
+    box.innerHTML='<p class="hint">لا توجد بيانات اشتراك مرتبطة بهذه المسابقة.</p>';
+    return;
+  }
+
+  if($('#subscriptionStatusBadge')){
+    $('#subscriptionStatusBadge').textContent=r.status==='active'?'مفعّل':(r.status||'');
+  }
+
+  const items=[
+    ['الباقة',r.plan_name||r.plan_code||'—'],
+    ['المسابقات',String(r.max_competitions??'—')],
+    ['الأسئلة لكل مسابقة',String(r.max_questions_per_competition??'—')],
+    ['المشاركون',String(r.max_participants??'—')]
+  ];
+
+  box.innerHTML='';
+  items.forEach(([label,value])=>{
+    const d=document.createElement('div');
+    d.className='stat';
+    const s=document.createElement('span');
+    s.textContent=label;
+    const strong=document.createElement('strong');
+    strong.textContent=value;
+    d.append(s,strong);
+    box.appendChild(d);
+  });
+
+  msg('#subscriptionSummaryMsg',
+    r.is_platform_owner
+      ? 'حساب مالك منصة لَمْح.'
+      : 'هذه هي حدود باقة الجهة الحالية.'
+  );
+}
