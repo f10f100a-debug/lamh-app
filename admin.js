@@ -607,20 +607,77 @@ $('#clearQuestionsBtn')?.addEventListener('click',async()=>{
   }catch(e){alert(e.message||'تعذر المسح.');}
 });
 
+
+async function uploadBrandLogo(kind,file){
+  if(!file)return;
+  if(file.size>900*1024){
+    msg('#logoMsg','حجم الشعار كبير. اختر صورة أقل من 900 كيلوبايت.',true);
+    return;
+  }
+  const dataUri=await new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(reader.result);
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
+
+  const {error}=await db.rpc('admin_set_organization_branding',{
+    p_code:adminCode,
+    p_pin:adminPin,
+    p_kind:kind,
+    p_logo_data_uri:dataUri
+  });
+  if(error)throw error;
+}
+
 $('#logoInput')?.addEventListener('change',async(e)=>{
-  const file=e.target.files?.[0]; if(!file)return;
-  if(!file.type.startsWith('image/')){alert('اختر صورة فقط.');return;}
-  if(file.size>750*1024){alert('حجم الشعار يجب ألا يتجاوز 750KB.');e.target.value='';return;}
-  const reader=new FileReader();
-  reader.onload=async()=>{
-    try{
-      const {error}=await db.rpc('admin_set_competition_logo',{p_code:adminCode,p_pin:adminPin,p_logo_data_uri:reader.result});
-      if(error) throw error;
-      msg('#logoMsg','تم تحديث شعار الجهة ✓');
-      await loadDashboard();
-    }catch(err){msg('#logoMsg',err.message||'تعذر حفظ الشعار.',true);}
-  };
-  reader.readAsDataURL(file);
+  const file=e.target.files?.[0];
+  if(!file)return;
+  try{
+    msg('#logoMsg','جارٍ تحديث شعار الجهة...');
+    await uploadBrandLogo('organization',file);
+    msg('#logoMsg','تم تحديث شعار الجهة ✓');
+    await loadDashboard();
+  }catch(err){
+    msg('#logoMsg',err.message||'تعذر تحديث شعار الجهة.',true);
+  }finally{
+    e.target.value='';
+  }
+});
+
+$('#officialLogoInput')?.addEventListener('change',async(e)=>{
+  const file=e.target.files?.[0];
+  if(!file)return;
+  try{
+    msg('#logoMsg','جارٍ تحديث الشعار الرسمي...');
+    await uploadBrandLogo('official',file);
+    msg('#logoMsg','تم تحديث الشعار الرسمي ✓');
+    await loadDashboard();
+  }catch(err){
+    msg('#logoMsg',err.message||'تعذر تحديث الشعار الرسمي.',true);
+  }finally{
+    e.target.value='';
+  }
+});
+
+$('#removeOrgLogoBtn')?.addEventListener('click',async()=>{
+  if(!confirm('إزالة شعار الجهة؟'))return;
+  const {error}=await db.rpc('admin_set_organization_branding',{
+    p_code:adminCode,p_pin:adminPin,p_kind:'organization',p_logo_data_uri:null
+  });
+  if(error){msg('#logoMsg',error.message||'تعذر إزالة الشعار.',true);return;}
+  msg('#logoMsg','تمت إزالة شعار الجهة ✓');
+  await loadDashboard();
+});
+
+$('#resetOfficialLogoBtn')?.addEventListener('click',async()=>{
+  if(!confirm('إعادة الشعار الرسمي إلى الوضع الافتراضي؟'))return;
+  const {error}=await db.rpc('admin_set_organization_branding',{
+    p_code:adminCode,p_pin:adminPin,p_kind:'official',p_logo_data_uri:null
+  });
+  if(error){msg('#logoMsg',error.message||'تعذر إعادة الشعار الافتراضي.',true);return;}
+  msg('#logoMsg','تمت إعادة الشعار الرسمي إلى الافتراضي ✓');
+  await loadDashboard();
 });
 
 $('#sendNotifyBtn')?.addEventListener('click',async()=>{
