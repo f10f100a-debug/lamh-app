@@ -58,6 +58,40 @@ function syncParticipantAffiliationField() {
 $('#participantType')?.addEventListener('change', syncParticipantAffiliationField);
 syncParticipantAffiliationField();
 
+function applyCompetitionBranding(comp){
+  if(!comp)return;
+
+  const ministryLogo=$('#ministryLogo');
+  if(ministryLogo){
+    const hasOfficial=!!comp.official_logo_data_uri;
+    const showOfficial=hasOfficial || comp.show_ministry_logo!==false;
+    ministryLogo.style.display=showOfficial?'':'none';
+    ministryLogo.src=hasOfficial?comp.official_logo_data_uri:'assets/ministry.png';
+    ministryLogo.alt=hasOfficial?'الشعار الرسمي':'وزارة التعليم';
+  }
+
+  const organizationLogo=$('#organizationLogo');
+  const orgLogo=comp.organization_logo_data_uri||comp.logo_data_uri||comp.logo_url||'';
+  if(organizationLogo){
+    if(orgLogo){
+      organizationLogo.src=orgLogo;
+      organizationLogo.style.display='';
+    }else if(comp.organization_type==='school'){
+      organizationLogo.src='assets/school.png';
+      organizationLogo.style.display='';
+    }else{
+      organizationLogo.removeAttribute('src');
+      organizationLogo.style.display='none';
+    }
+  }
+
+  const participantType=$('#participantType');
+  if(participantType){
+    participantType.value=comp.organization_type==='group'?'group':comp.organization_type==='entity'?'entity':'school';
+  }
+  syncParticipantAffiliationField();
+}
+
 function show(screenId) {
   if (screenId !== 'result') { clearTimeout(resultPollTimer); resultGeneration++; }
   ['join', 'waiting', 'quiz', 'result'].forEach(id => {
@@ -129,7 +163,15 @@ const presetCode = params.get('code');
 
 if (presetCode && $('#code')) {
   $('#code').value = presetCode.toUpperCase();
-}
+  (async()=>{
+    try{
+      const {data,error}=await db.rpc('get_public_competition',{p_code:presetCode.toUpperCase()});
+      if(error)return;
+      const publicCompetition=Array.isArray(data)?data[0]:data;
+      if(publicCompetition) applyCompetitionBranding(publicCompetition);
+    }catch(e){console.warn('BRANDING PRELOAD',e);}
+  })();
+} // BRANDING PRELOAD
 
 const joinForm = $('#joinForm');
 
@@ -376,48 +418,8 @@ async function pollWaitingCompetition() {
     if (error) throw error;
     competition = Array.isArray(data) ? data[0] : data;
     if (!competition) throw new Error('المسابقة غير موجودة.');
-    const ministryLogo = $('#ministryLogo');
-    if (ministryLogo) {
-      const showOfficial = competition.show_official_logo !== false;
-      ministryLogo.style.display = showOfficial ? '' : 'none';
-      ministryLogo.src = competition.official_logo_data_uri || 'assets/ministry.png';
-      ministryLogo.alt = competition.official_logo_data_uri ? 'الشعار الرسمي' : 'وزارة التعليم';
-    }
+    applyCompetitionBranding(competition);
 
-    const participantType = $('#participantType');
-    const affiliationLabel = $('#affiliationLabel');
-    const affiliationInput = $('#school');
-    if (affiliationLabel && affiliationInput) {
-      const syncAffiliationField = () => {
-        const type = participantType?.value || 'school';
-        if (type === 'group') {
-          affiliationLabel.textContent = 'اسم المجموعة / الفريق';
-          affiliationInput.placeholder = 'اكتب اسم المجموعة أو الفريق';
-        } else if (type === 'entity') {
-          affiliationLabel.textContent = 'اسم الجهة';
-          affiliationInput.placeholder = 'اكتب اسم الجهة';
-        } else {
-          affiliationLabel.textContent = 'اسم المدرسة';
-          affiliationInput.placeholder = 'اكتب اسم المدرسة';
-        }
-      };
-
-      if (participantType) {
-        participantType.value = competition.organization_type === 'group'
-          ? 'group'
-          : competition.organization_type === 'entity'
-            ? 'entity'
-            : 'school';
-        participantType.addEventListener('change', syncAffiliationField);
-      }
-
-      syncAffiliationField();
-    }
-
-    const schoolLogo = competition.organization_logo_data_uri || competition.logo_data_uri || competition.logo_url;
-    if (schoolLogo) document.querySelectorAll('header.top img.logo').forEach(img => {
-      if (img.alt !== 'وزارة التعليم') img.src = schoolLogo;
-    });
     const serverNow = new Date(competition.server_now).getTime();
     if (Number.isFinite(serverNow)) serverClockOffset = serverNow - Date.now();
     if (competition.status === 'finished') return finishCompetition();
