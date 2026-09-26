@@ -194,7 +194,7 @@ $('#loginBtn').onclick=async()=>{
 
     await loadDashboard();
     await loadParticipants();
-    if(adminRole==='owner'){ await Promise.all([loadStaff(),loadCommercialSettings()]); }
+    if(adminRole==='owner'){ await Promise.all([loadStaff(),loadCommercialSettings(),loadSubscriptionRequests()]); }
 
     applyRoleUI();
     $('#loginView').classList.add('hidden');
@@ -876,4 +876,98 @@ $('#saveCommercialBtn')?.addEventListener('click',async()=>{
 $('#refreshCommercialBtn')?.addEventListener('click',async()=>{
   try{await loadCommercialSettings();}
   catch(e){msg('#commercialMsg',e.message||'تعذر تحديث البيانات.',true);}
+});
+
+
+async function loadSubscriptionRequests(){
+  if(adminRole!=='owner')return;
+  const box=$('#subscriptionRequestsList');
+  if(!box)return;
+  box.innerHTML='<p class="hint">جارٍ تحميل الطلبات...</p>';
+
+  const {data,error}=await db.rpc('owner_list_subscription_requests',{
+    p_code:adminCode,
+    p_pin:adminPin
+  });
+  if(error)throw error;
+
+  const items=Array.isArray(data)?data:(data||[]);
+  if(!items.length){
+    box.innerHTML='<p class="hint">لا توجد طلبات اشتراك حتى الآن.</p>';
+    return;
+  }
+
+  box.innerHTML='';
+  items.forEach(r=>{
+    const row=document.createElement('div');
+    row.className='question-item';
+    const statusLabel={
+      receipt_uploaded:'بانتظار المراجعة',
+      under_review:'تحت المراجعة',
+      approved:'مفعّل',
+      rejected:'مرفوض'
+    }[r.status]||r.status;
+
+    row.innerHTML=`
+      <div style="flex:1">
+        <strong>${escapeHtml(r.organization_name||'')}</strong>
+        <div class="hint">${escapeHtml(r.request_number||'')} • ${escapeHtml(r.contact_name||'')} • ${escapeHtml(r.phone||'')}</div>
+        <div class="hint">الباقة: ${r.plan_code==='pro'?'احترافية':'مدرسة'} • الحالة: ${escapeHtml(statusLabel)}</div>
+        ${r.email?`<div class="hint">${escapeHtml(r.email)}</div>`:''}
+        ${r.owner_note?`<div class="hint">ملاحظة: ${escapeHtml(r.owner_note)}</div>`:''}
+        ${r.competition_code?`<div class="hint">رمز المسابقة: <strong>${escapeHtml(r.competition_code)}</strong></div>`:''}
+      </div>
+      <div class="actions" style="flex-wrap:wrap">
+        <button class="small-btn receipt-btn" type="button">عرض الإيصال</button>
+        ${r.status!=='approved'&&r.status!=='rejected'?'<button class="small-btn review-btn" type="button">تحت المراجعة</button>':''}
+        ${r.status!=='approved'?'<button class="small-btn approve-btn" type="button">اعتماد وتفعيل</button>':''}
+        ${r.status!=='approved'&&r.status!=='rejected'?'<button class="small-btn danger-btn reject-btn" type="button">رفض</button>':''}
+      </div>`;
+
+    row.querySelector('.receipt-btn')?.addEventListener('click',()=>{
+      if(r.receipt_data_uri){
+        const w=window.open();
+        if(w)w.document.write('<img src="'+r.receipt_data_uri+'" style="max-width:100%;height:auto">');
+      }
+    });
+
+    row.querySelector('.review-btn')?.addEventListener('click',()=>reviewSubscriptionRequest(r.id,'under_review'));
+    row.querySelector('.approve-btn')?.addEventListener('click',()=>reviewSubscriptionRequest(r.id,'approved'));
+    row.querySelector('.reject-btn')?.addEventListener('click',()=>reviewSubscriptionRequest(r.id,'rejected'));
+    box.appendChild(row);
+  });
+}
+
+async function reviewSubscriptionRequest(id,action){
+  const labels={approved:'اعتماد هذا الطلب وتفعيل الاشتراك؟',rejected:'رفض هذا الطلب؟',under_review:'نقل الطلب إلى تحت المراجعة؟'};
+  if(!confirm(labels[action]||'متابعة؟'))return;
+
+  let note='';
+  if(action==='rejected') note=prompt('سبب الرفض أو الملاحظة للعميل:','')||'';
+  else if(action==='under_review') note=prompt('ملاحظة اختيارية:','')||'';
+
+  msg('#subscriptionRequestsMsg','جارٍ تحديث الطلب...');
+  const {data,error}=await db.rpc('owner_review_subscription_request',{
+    p_code:adminCode,
+    p_pin:adminPin,
+    p_request_id:id,
+    p_action:action,
+    p_note:note
+  });
+  if(error){
+    msg('#subscriptionRequestsMsg',error.message||'تعذر تحديث الطلب.',true);
+    return;
+  }
+  const r=Array.isArray(data)?data[0]:data;
+  msg('#subscriptionRequestsMsg',
+    action==='approved'
+      ? 'تم اعتماد الاشتراك وإنشاء حساب الجهة. رمز المسابقة: '+(r?.competition_code||'')
+      : 'تم تحديث حالة الطلب ✓'
+  );
+  await loadSubscriptionRequests();
+}
+
+$('#refreshSubscriptionRequestsBtn')?.addEventListener('click',async()=>{
+  try{await loadSubscriptionRequests();}
+  catch(e){msg('#subscriptionRequestsMsg',e.message||'تعذر تحميل الطلبات.',true);}
 });
