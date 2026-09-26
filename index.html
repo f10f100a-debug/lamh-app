@@ -59,7 +59,14 @@
         required
       >
 
-      <label for="school" id="affiliationLabel">المدرسة</label>
+      <label for="participantType">الانتماء</label>
+      <select id="participantType" required>
+        <option value="school">مدرسة</option>
+        <option value="group">مجموعة</option>
+        <option value="entity">جهة</option>
+      </select>
+
+      <label for="school" id="affiliationLabel">اسم المدرسة</label>
       <input
         id="school"
         type="text"
@@ -186,7 +193,7 @@
 
 </main>
 
-<script src="app.js?v=20260926-19"></script>
+<script src="app.js?v=20260926-20"></script>
 <script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}</script>
 
 </body>
