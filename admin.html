@@ -65,6 +65,16 @@
         </div>
 
         <div>
+          <label>رمز المسابقة</label>
+          <div class="actions">
+            <input id="compCode" maxlength="12" autocapitalize="characters" autocomplete="off" style="flex:1">
+            <button id="changeCodeBtn" type="button" class="small-btn">تغيير الرمز</button>
+          </div>
+          <p class="hint">2–12 حرفًا أو رقمًا بالإنجليزية. تغيير الرمز يغيّر رابط وQR الدخول.</p>
+          <p id="codeMsg" class="msg"></p>
+        </div>
+
+        <div>
           <label>وقت البداية</label>
           <input id="compStart" type="datetime-local">
         </div>
