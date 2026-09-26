@@ -364,6 +364,21 @@ async function pollWaitingCompetition() {
       ministryLogo.style.display = competition.show_ministry_logo === false ? 'none' : '';
     }
 
+    const affiliationLabel = $('#affiliationLabel');
+    const affiliationInput = $('#school');
+    if (affiliationLabel && affiliationInput) {
+      if (competition.organization_type === 'group') {
+        affiliationLabel.textContent = 'المجموعة / الفريق';
+        affiliationInput.placeholder = 'اكتب اسم المجموعة أو الفريق';
+      } else if (competition.organization_type === 'entity') {
+        affiliationLabel.textContent = 'الجهة';
+        affiliationInput.placeholder = 'اكتب اسم الجهة';
+      } else {
+        affiliationLabel.textContent = 'المدرسة';
+        affiliationInput.placeholder = 'اكتب اسم المدرسة';
+      }
+    }
+
     const schoolLogo = competition.organization_logo_data_uri || competition.logo_data_uri || competition.logo_url;
     if (schoolLogo) document.querySelectorAll('header.top img.logo').forEach(img => {
       if (img.alt !== 'وزارة التعليم') img.src = schoolLogo;
