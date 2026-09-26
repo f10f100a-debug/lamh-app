@@ -107,7 +107,29 @@
       </div>
 
       <button id="saveCompetitionBtn" class="primary">حفظ الإعدادات</button>
-      <p id="settingsMsg" class="msg"></p><label>شعار الجهة المنظمة</label><input id="logoInput" type="file" accept="image/*"><p id="logoMsg" class="msg"></p>
+      <p id="settingsMsg" class="msg"></p>
+
+      <div class="owner-only">
+        <h3>هوية الجهة</h3>
+        <div class="grid2">
+          <div>
+            <label>الشعار الرسمي / العلوي</label>
+            <input id="officialLogoInput" type="file" accept="image/png,image/jpeg,image/webp">
+            <div class="actions">
+              <button id="resetOfficialLogoBtn" type="button" class="small-btn">إعادة الافتراضي</button>
+            </div>
+            <p class="hint">للمدرسة يعود افتراضيًا إلى شعار وزارة التعليم، وللمجموعة أو الجهة يمكن وضع شعار رسمي بديل.</p>
+          </div>
+          <div>
+            <label>شعار المدرسة / المجموعة / الجهة</label>
+            <input id="logoInput" type="file" accept="image/png,image/jpeg,image/webp">
+            <div class="actions">
+              <button id="removeOrgLogoBtn" type="button" class="small-btn">إزالة شعار الجهة</button>
+            </div>
+          </div>
+        </div>
+        <p id="logoMsg" class="msg"></p>
+      </div>
     </section>
 
     <section class="panel">
@@ -302,6 +324,6 @@
 
 </main>
 
-<script src="admin.js?v=20260926-18"></script>
+<script src="admin.js?v=20260926-23"></script>
 </body>
 </html>
