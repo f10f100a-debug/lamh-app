@@ -26,7 +26,7 @@
     <label>رمز المسابقة</label>
     <input id="adminCode" value="A1" maxlength="6">
 
-    <label>رمز الإدارة</label>
+    <label>رمز الإدارة / المشرف</label>
     <input id="adminPin" type="password" inputmode="numeric" maxlength="6" placeholder="••••••">
 
     <button id="loginBtn" class="primary">دخول لوحة التحكم</button>
@@ -39,6 +39,7 @@
       <div>
         <strong id="dashTitle">المسابقة</strong>
         <span id="dashCode" class="badge"></span>
+        <span id="roleBadge" class="badge"></span>
       </div>
       <button id="refreshBtn" class="small-btn">تحديث</button>
     </div>
@@ -64,7 +65,7 @@
           <input id="compOrg">
         </div>
 
-        <div>
+        <div class="owner-only">
           <label>رمز المسابقة</label>
           <div class="actions">
             <input id="compCode" maxlength="12" autocapitalize="characters" autocomplete="off" style="flex:1">
@@ -214,7 +215,24 @@
       <div id="adminLeaderboard"></div>
     </section>
 
-    <section class="panel danger-zone">
+    <section class="panel owner-only" id="staffPanel">
+      <div class="section-head">
+        <h2>المشرفون والصلاحيات</h2>
+        <button id="refreshStaffBtn" class="small-btn">تحديث</button>
+      </div>
+      <p class="hint">المشرف يدير المسابقة، والمراقب يشاهد فقط. لكل شخص رمز دخول مستقل من 6 أرقام.</p>
+      <div class="grid2">
+        <div><label>الاسم</label><input id="staffName" placeholder="اسم المشرف"></div>
+        <div><label>البريد الإلكتروني</label><input id="staffEmail" type="email" placeholder="name@example.com"></div>
+        <div><label>الدور</label><select id="staffRole"><option value="supervisor">مشرف</option><option value="viewer">مراقب</option></select></div>
+        <div><label>رمز الدخول</label><input id="staffPin" type="password" inputmode="numeric" maxlength="6" placeholder="6 أرقام"></div>
+      </div>
+      <button id="saveStaffBtn" class="primary">إضافة / تحديث المشرف</button>
+      <p id="staffMsg" class="msg"></p>
+      <div id="staffList"></div>
+    </section>
+
+    <section class="panel danger-zone owner-only">
       <h2>أمان لوحة الإدارة</h2>
 
       <label>رمز الإدارة الجديد</label>
