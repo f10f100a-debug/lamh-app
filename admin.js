@@ -86,6 +86,20 @@ function renderDashboard(){
   $('#compSeconds').value=c.seconds_per_question||20;
   $('#compStatus').value=c.status||'waiting';
 
+  const officialPreview=$('#officialLogoPreview');
+  if(officialPreview){
+    const src=c.official_logo_data_uri || (c.show_ministry_logo!==false ? 'assets/ministry.png' : '');
+    officialPreview.src=src||'';
+    officialPreview.style.display=src?'block':'none';
+  }
+
+  const orgPreview=$('#orgLogoPreview');
+  if(orgPreview){
+    const src=c.organization_logo_data_uri||'';
+    orgPreview.src=src;
+    orgPreview.style.display=src?'block':'none';
+  }
+
   if(c.start_at){
     const d=new Date(c.start_at);
     const local=new Date(d.getTime()-d.getTimezoneOffset()*60000);
