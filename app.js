@@ -41,6 +41,23 @@ let submitting = false;
 
 const $ = (selector) => document.querySelector(selector);
 
+function syncParticipantAffiliationField() {
+  const type = $('#participantType')?.value || 'school';
+  const input = $('#school');
+  if (!input) return;
+
+  if (type === 'group') {
+    input.placeholder = 'اكتب اسم المجموعة أو الفريق';
+  } else if (type === 'entity') {
+    input.placeholder = 'اكتب اسم الجهة';
+  } else {
+    input.placeholder = 'اكتب اسم المدرسة';
+  }
+}
+
+$('#participantType')?.addEventListener('change', syncParticipantAffiliationField);
+syncParticipantAffiliationField();
+
 function show(screenId) {
   if (screenId !== 'result') { clearTimeout(resultPollTimer); resultGeneration++; }
   ['join', 'waiting', 'quiz', 'result'].forEach(id => {
