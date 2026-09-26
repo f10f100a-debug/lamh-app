@@ -611,6 +611,7 @@ if (againButton) {
       clearInterval(waitingTimer);
 
       stopWaiting();
+      clearParticipantSession();
       participantId = null;
       competitionId = null;
       competition = null;
@@ -635,4 +636,8 @@ if (againButton) {
 
 /* ---------- البداية ---------- */
 
-show('join');
+(async()=>{
+  show('join');
+  const restored=await restoreParticipantSession();
+  if(!restored)show('join');
+})();
