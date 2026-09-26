@@ -30,7 +30,13 @@
 <section class="panel">
 <h2>طلب الاشتراك</h2>
 <div class="grid">
-<div><label>اسم الجهة</label><input id="orgName" placeholder="مثال: مدرسة ..."></div>
+<div><label>نوع الجهة</label>
+<select id="orgType">
+<option value="school">مدرسة</option>
+<option value="group">مجموعة</option>
+<option value="entity">جهة</option>
+</select></div>
+<div><label>اسم الجهة</label><input id="orgName" placeholder="اكتب اسم المدرسة أو المجموعة أو الجهة"></div>
 <div><label>اسم المسؤول</label><input id="contactName" placeholder="الاسم"></div>
 <div><label>رقم الجوال</label><input id="phone" inputmode="numeric" placeholder="05xxxxxxxx" maxlength="10"></div>
 <div><label>البريد الإلكتروني</label><input id="email" type="email" placeholder="اختياري"></div>
@@ -38,6 +44,7 @@
 <label>رمز إدارة الحساب</label>
 <input id="ownerPin" type="password" inputmode="numeric" maxlength="6" placeholder="6 أرقام">
 <p class="muted">احتفظ بهذا الرمز؛ ستستخدمه للدخول إلى لوحة إدارة لَمْح بعد اعتماد الاشتراك.</p>
+<p class="muted" id="brandingHint">للمدارس يظهر شعار وزارة التعليم افتراضيًا، أما المجموعات والجهات فتظهر بهوية الجهة فقط.</p>
 <label>صورة إيصال التحويل</label>
 <input id="receipt" type="file" accept="image/png,image/jpeg,image/webp">
 <img id="receiptPreview" class="receipt-preview" alt="معاينة الإيصال">
@@ -83,6 +90,13 @@ async function loadOffer(){
  : '<p class="muted">بيانات التحويل ستظهر هنا بعد إدخالها من المالك.</p>';
 }
 
+$('#orgType').addEventListener('change',()=>{
+  const type=$('#orgType').value;
+  $('#brandingHint').textContent=type==='school'
+    ? 'للمدارس يظهر شعار وزارة التعليم افتراضيًا مع شعار المدرسة.'
+    : 'لهذا النوع لن يظهر شعار وزارة التعليم افتراضيًا، وستظهر هوية الجهة فقط.';
+});
+
 $('#receipt').addEventListener('change',e=>{
  const f=e.target.files?.[0]; if(!f)return;
  if(f.size>1024*1024){$('#msg').textContent='صورة الإيصال كبيرة. اختر صورة أقل من 1 ميجابايت.';$('#msg').className='msg error';e.target.value='';return}
@@ -99,6 +113,7 @@ $('#submitBtn').addEventListener('click',async()=>{
    if(!/^\d{6}$/.test(pin))throw new Error('رمز الإدارة يجب أن يكون 6 أرقام.');
    const {data,error}=await db.rpc('submit_subscription_request',{
      p_organization_name:$('#orgName').value.trim(),
+     p_organization_type:$('#orgType').value,
      p_contact_name:$('#contactName').value.trim(),
      p_phone:$('#phone').value.trim(),
      p_email:$('#email').value.trim(),
