@@ -47,10 +47,12 @@ async function loadDashboard(){
   if(error)throw error;
 
   dashboard=Array.isArray(data)?data[0]:data;
+  adminRole=dashboard?.role||adminRole||'owner';
   renderDashboard();
 }
 
 function renderDashboard(){
+  applyRoleUI();
   const c=dashboard.competition;
   const s=dashboard.stats;
   const published=c.results_published===true;
@@ -181,16 +183,20 @@ $('#loginBtn').onclick=async()=>{
   msg('#loginMsg','جارٍ التحقق...');
 
   try{
-    const {error}=await db.rpc('admin_login',{
+    const {data,error}=await db.rpc('admin_login',{
       p_code:adminCode,
       p_pin:adminPin
     });
-
     if(error)throw error;
+
+    const loginResult=Array.isArray(data)?data[0]:data;
+    adminRole=loginResult?.role||'owner';
 
     await loadDashboard();
     await loadParticipants();
+    if(adminRole==='owner') await loadStaff();
 
+    applyRoleUI();
     $('#loginView').classList.add('hidden');
     $('#dashboardView').classList.remove('hidden');
 
