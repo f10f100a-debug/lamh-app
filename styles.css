@@ -517,3 +517,30 @@ footer strong {
 #waiting h2, #waitingNote { overflow-wrap: anywhere; }
 #count { font-variant-numeric: tabular-nums; font-size: clamp(28px, 8vw, 54px); overflow-wrap: anywhere; }
 #count.waiting-message { direction: rtl; letter-spacing: normal; font-size: 20px; line-height: 1.8; }
+
+
+/* ===== اختيار الانتماء ===== */
+#participantType {
+  width: 100%;
+  min-height: 60px;
+  border: 1.5px solid var(--border);
+  border-radius: 13px;
+  background: #fbfdfe;
+  padding: 0 16px;
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--navy);
+  outline: none;
+  appearance: auto;
+}
+
+#participantType:focus {
+  border-color: var(--teal);
+  background: var(--white);
+  box-shadow: 0 0 0 4px rgba(21, 155, 154, 0.1);
+}
+
+#affiliationLabel {
+  display: none;
+}
