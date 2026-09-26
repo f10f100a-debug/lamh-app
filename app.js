@@ -676,7 +676,7 @@ if (againButton) {
 /* ---------- البداية ---------- */
 
 (async()=>{
-  show('join');
+  ['join','waiting','quiz','result'].forEach(id=>$('#'+id)?.classList.add('hidden'));
   const restored=await restoreParticipantSession();
   if(!restored)show('join');
 })();
