@@ -216,6 +216,39 @@
       <div id="adminLeaderboard"></div>
     </section>
 
+    <section class="panel owner-only" id="commercialPanel">
+      <div class="section-head">
+        <h2>الإعدادات التجارية</h2>
+        <button id="refreshCommercialBtn" class="small-btn">تحديث</button>
+      </div>
+
+      <p class="hint">هذه الصفحة خاصة بالمالك فقط، ولا تظهر للمشرف أو المراقب.</p>
+
+      <div id="plansOwnerView" class="stats"></div>
+
+      <h3>بيانات التحويل البنكي</h3>
+      <div class="grid2">
+        <div>
+          <label>اسم البنك</label>
+          <input id="bankName" placeholder="مثال: مصرف الراجحي">
+        </div>
+        <div>
+          <label>اسم صاحب الحساب</label>
+          <input id="accountName" placeholder="اسم المستفيد">
+        </div>
+        <div>
+          <label>رقم الآيبان</label>
+          <input id="iban" dir="ltr" placeholder="SA00...">
+        </div>
+      </div>
+
+      <label>ملاحظة التحويل</label>
+      <textarea id="transferNote" rows="3" placeholder="مثال: أرسل الإيصال بعد التحويل ليتم تفعيل الاشتراك."></textarea>
+
+      <button id="saveCommercialBtn" class="primary">حفظ الإعدادات التجارية</button>
+      <p id="commercialMsg" class="msg"></p>
+    </section>
+
     <section class="panel owner-only" id="staffPanel">
       <div class="section-head">
         <h2>المشرفون والصلاحيات</h2>
@@ -247,6 +280,6 @@
 
 </main>
 
-<script src="admin.js?v=20260926-9"></script>
+<script src="admin.js?v=20260926-10"></script>
 </body>
 </html>
