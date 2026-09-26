@@ -7,7 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,Arial,sans-serif;color:#16364a;background:#f4f8fb}
-*{box-sizing:border-box}body{margin:0}.wrap{max-width:880px;margin:auto;padding:24px}.hero{background:linear-gradient(135deg,#16485c,#0e9f8a);color:#fff;border-radius:28px;padding:28px;margin-bottom:18px}.hero h1{margin:0 0 8px;font-size:34px}.hero p{margin:0;opacity:.94}.panel{background:#fff;border-radius:22px;padding:22px;margin:16px 0;box-shadow:0 10px 30px rgba(22,54,74,.08)}.plans{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.plan{border:2px solid #e4edf2;border-radius:18px;padding:18px;cursor:pointer}.plan.active{border-color:#0e9f8a;background:#f1fbf8}.price{font-size:30px;font-weight:800}.muted{color:#6b7d88;font-size:14px}label{display:block;font-weight:700;margin:12px 0 6px}input,select,textarea{width:100%;padding:13px;border:1px solid #cedbe2;border-radius:12px;font-size:16px;background:#fff}button{border:0;border-radius:12px;padding:14px 18px;font-weight:800;font-size:16px;cursor:pointer}.primary{background:#0e9f8a;color:#fff;width:100%;margin-top:16px}.secondary{background:#eaf2f6;color:#16364a}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.bank{background:#f7fafc;border:1px dashed #aebfc9;border-radius:14px;padding:14px}.status{padding:14px;border-radius:14px;background:#eef8f5;margin-top:12px}.hidden{display:none}.msg{margin-top:10px}.error{color:#b42318}.ok{color:#08765f}.receipt-preview{max-width:220px;border-radius:12px;margin-top:10px;display:none}@media(max-width:650px){.plans,.grid{grid-template-columns:1fr}.wrap{padding:14px}.hero h1{font-size:28px}}
+*{box-sizing:border-box}body{margin:0}.wrap{max-width:880px;margin:auto;padding:24px}.hero{background:linear-gradient(135deg,#16485c,#0e9f8a);color:#fff;border-radius:28px;padding:28px;margin-bottom:18px}.hero h1{margin:0 0 8px;font-size:34px}.hero p{margin:0;opacity:.94}.panel{background:#fff;border-radius:22px;padding:22px;margin:16px 0;box-shadow:0 10px 30px rgba(22,54,74,.08)}.plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.plan{border:2px solid #e4edf2;border-radius:18px;padding:18px;cursor:pointer}.plan.active{border-color:#0e9f8a;background:#f1fbf8}.price{font-size:30px;font-weight:800}.muted{color:#6b7d88;font-size:14px}label{display:block;font-weight:700;margin:12px 0 6px}input,select,textarea{width:100%;padding:13px;border:1px solid #cedbe2;border-radius:12px;font-size:16px;background:#fff}button{border:0;border-radius:12px;padding:14px 18px;font-weight:800;font-size:16px;cursor:pointer}.primary{background:#0e9f8a;color:#fff;width:100%;margin-top:16px}.secondary{background:#eaf2f6;color:#16364a}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.bank{background:#f7fafc;border:1px dashed #aebfc9;border-radius:14px;padding:14px}.status{padding:14px;border-radius:14px;background:#eef8f5;margin-top:12px}.hidden{display:none}.msg{margin-top:10px}.error{color:#b42318}.ok{color:#08765f}.receipt-preview{max-width:220px;border-radius:12px;margin-top:10px;display:none}@media(max-width:650px){.plans,.grid{grid-template-columns:1fr}.wrap{padding:14px}.hero h1{font-size:28px}}
 </style>
 </head>
 <body>
@@ -18,7 +18,7 @@
 </section>
 
 <section class="panel">
-<h2>اختر الباقة</h2>
+<h2>الأسعار حسب نوع الجهة</h2>
 <div id="plans" class="plans"><p class="muted">جارٍ تحميل الباقات...</p></div>
 </section>
 
@@ -81,7 +81,13 @@ async function loadOffer(){
    d.className='plan'+(p.code===selectedPlan?' active':'');
    d.dataset.plan=p.code;
    d.innerHTML='<strong>'+esc(p.name)+'</strong><div class="price">'+Number(p.monthly_price||0).toFixed(0)+' ر.س</div><div class="muted">شهريًا</div><p class="muted">'+p.max_competitions+' مسابقة • '+p.max_questions_per_competition+' سؤال لكل مسابقة • '+p.max_participants+' مشارك</p>';
-   d.onclick=()=>{selectedPlan=p.code;document.querySelectorAll('.plan').forEach(x=>x.classList.toggle('active',x.dataset.plan===selectedPlan));};
+   d.onclick=()=>{
+     selectedPlan=p.code;
+     const typeMap={group:'group',school:'school',entity:'entity'};
+     if(typeMap[p.code]) $('#orgType').value=typeMap[p.code];
+     document.querySelectorAll('.plan').forEach(x=>x.classList.toggle('active',x.dataset.plan===selectedPlan));
+     syncTypePricing();
+   };
    $('#plans').appendChild(d);
  });
  const b=r?.bank||{};
@@ -90,12 +96,15 @@ async function loadOffer(){
  : '<p class="muted">بيانات التحويل ستظهر هنا بعد إدخالها من المالك.</p>';
 }
 
-$('#orgType').addEventListener('change',()=>{
+function syncTypePricing(){
   const type=$('#orgType').value;
+  selectedPlan=type==='group'?'group':type==='entity'?'entity':'school';
+  document.querySelectorAll('.plan').forEach(x=>x.classList.toggle('active',x.dataset.plan===selectedPlan));
   $('#brandingHint').textContent=type==='school'
     ? 'للمدارس يظهر شعار وزارة التعليم افتراضيًا مع شعار المدرسة.'
     : 'لهذا النوع لن يظهر شعار وزارة التعليم افتراضيًا، وستظهر هوية الجهة فقط.';
-});
+}
+$('#orgType').addEventListener('change',syncTypePricing);
 
 $('#receipt').addEventListener('change',e=>{
  const f=e.target.files?.[0]; if(!f)return;
@@ -147,7 +156,7 @@ async function loadStatus(){
  $('#statusPanel').classList.remove('hidden');
 }
 $('#refreshStatusBtn').addEventListener('click',loadStatus);
-loadOffer(); loadStatus();
+loadOffer().then(syncTypePricing); loadStatus();
 </script>
 </body>
 </html>
