@@ -7,6 +7,7 @@ const $=s=>document.querySelector(s);
 let adminCode='';
 let adminPin='';
 let dashboard=null;
+let adminRole='owner';
 
 $('#publishResultsBtn')?.addEventListener('click',async()=>{
   const published=dashboard?.competition?.results_published===true;
@@ -65,6 +66,7 @@ function renderDashboard(){
 
   $('#dashTitle').textContent=c.title;
   $('#dashCode').textContent=c.slug;
+  if($('#roleBadge')) $('#roleBadge').textContent=adminRole==='owner'?'المالك':adminRole==='supervisor'?'مشرف':'مراقب';
 
   $('#statParticipants').textContent=s.participants;
   $('#statCompleted').textContent=s.completed;
@@ -655,4 +657,145 @@ $('#changeCodeBtn')?.addEventListener('click',async()=>{
   }finally{
     btn.disabled=false;
   }
+});
+
+
+function applyRoleUI(){
+  document.querySelectorAll('.owner-only').forEach(el=>{
+    el.classList.toggle('hidden',adminRole!=='owner');
+  });
+
+  const viewer=adminRole==='viewer';
+  const mutationIds=[
+    'saveCompetitionBtn','newQuestionBtn','clearQuestionsBtn','saveQuestionBtn',
+    'clearParticipantsBtn','saveParticipantBtn','logoInput','sendNotifyBtn',
+    'publishResultsBtn'
+  ];
+  mutationIds.forEach(id=>{
+    const el=$('#'+id);
+    if(el) el.disabled=viewer;
+  });
+
+  if(viewer){
+    ['compTitle','compOrg','compStart','compSeconds','compStatus','questionOrder','questionText',
+     'optionA','optionB','optionC','optionD','correctOption','participantName','participantMobile',
+     'participantSchool','notifyTitle','notifyKind','notifyBody'
+    ].forEach(id=>{const el=$('#'+id);if(el)el.disabled=true;});
+  }
+}
+
+async function loadStaff(){
+  if(adminRole!=='owner')return;
+  const {data,error}=await db.rpc('admin_list_staff',{p_code:adminCode,p_pin:adminPin});
+  if(error)throw error;
+  renderStaff(Array.isArray(data)?data:[]);
+}
+
+function renderStaff(items){
+  const box=$('#staffList');
+  if(!box)return;
+  box.innerHTML='';
+  if(!items.length){
+    box.innerHTML='<p class="hint">لا يوجد مشرفون إضافيون حتى الآن.</p>';
+    return;
+  }
+
+  items.forEach(s=>{
+    const row=document.createElement('div');
+    row.className='participant-card';
+
+    const head=document.createElement('div');
+    head.className='participant-head';
+
+    const identity=document.createElement('div');
+    const name=document.createElement('strong');
+    name.textContent=s.full_name||'مشرف';
+    const meta=document.createElement('div');
+    meta.className='participant-meta';
+    meta.textContent=`${s.email||''} • ${s.role==='supervisor'?'مشرف':'مراقب'}`;
+    identity.append(name,meta);
+
+    const status=document.createElement('span');
+    status.className=s.active?'participant-status completed':'participant-status pending';
+    status.textContent=s.active?'فعال':'موقوف';
+    head.append(identity,status);
+
+    const actions=document.createElement('div');
+    actions.className='participant-actions';
+
+    const toggle=document.createElement('button');
+    toggle.className='small-btn';
+    toggle.textContent=s.active?'إيقاف':'تفعيل';
+    toggle.onclick=()=>setStaffActive(s,!s.active);
+
+    const del=document.createElement('button');
+    del.className='small-btn danger-btn';
+    del.textContent='حذف';
+    del.onclick=()=>deleteStaff(s);
+
+    actions.append(toggle,del);
+    row.append(head,actions);
+    box.appendChild(row);
+  });
+}
+
+$('#saveStaffBtn')?.addEventListener('click',async()=>{
+  const fullName=$('#staffName').value.trim();
+  const email=$('#staffEmail').value.trim();
+  const role=$('#staffRole').value;
+  const pin=$('#staffPin').value.trim();
+
+  if(!fullName||!email||!/^[0-9]{6}$/.test(pin)){
+    msg('#staffMsg','أدخل الاسم والبريد ورمز دخول من 6 أرقام.',true);
+    return;
+  }
+
+  const btn=$('#saveStaffBtn');
+  btn.disabled=true;
+  msg('#staffMsg','جارٍ الحفظ...');
+  try{
+    const {error}=await db.rpc('admin_add_staff',{
+      p_code:adminCode,
+      p_pin:adminPin,
+      p_full_name:fullName,
+      p_email:email,
+      p_role:role,
+      p_staff_pin:pin
+    });
+    if(error)throw error;
+    $('#staffName').value='';
+    $('#staffEmail').value='';
+    $('#staffPin').value='';
+    msg('#staffMsg','تم حفظ المشرف ✓');
+    await loadStaff();
+  }catch(e){
+    msg('#staffMsg',e.message||'تعذر حفظ المشرف.',true);
+  }finally{
+    btn.disabled=false;
+  }
+});
+
+async function setStaffActive(staff,active){
+  try{
+    const {error}=await db.rpc('admin_set_staff_active',{
+      p_code:adminCode,p_pin:adminPin,p_staff_id:staff.id,p_active:active
+    });
+    if(error)throw error;
+    await loadStaff();
+  }catch(e){alert(e.message||'تعذر تحديث المشرف.');}
+}
+
+async function deleteStaff(staff){
+  if(!confirm(`حذف ${staff.full_name} من المشرفين؟`))return;
+  try{
+    const {error}=await db.rpc('admin_delete_staff',{
+      p_code:adminCode,p_pin:adminPin,p_staff_id:staff.id
+    });
+    if(error)throw error;
+    await loadStaff();
+  }catch(e){alert(e.message||'تعذر حذف المشرف.');}
+}
+
+$('#refreshStaffBtn')?.addEventListener('click',async()=>{
+  try{await loadStaff();}catch(e){alert(e.message||'تعذر تحديث المشرفين.');}
 });
