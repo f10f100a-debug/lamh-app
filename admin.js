@@ -993,12 +993,14 @@ async function loadSubscriptionRequests(){
   items.forEach(r=>{
     const row=document.createElement('div');
     row.className='question-item';
-    const statusLabel={
-      receipt_uploaded:'بانتظار المراجعة',
-      under_review:'تحت المراجعة',
-      approved:'مفعّل',
-      rejected:'مرفوض'
-    }[r.status]||r.status;
+    const statusLabel=r.subscription_status==='expired'
+      ? 'منتهي'
+      : ({
+          receipt_uploaded:'بانتظار المراجعة',
+          under_review:'تحت المراجعة',
+          approved:'مفعّل',
+          rejected:'مرفوض'
+        }[r.status]||r.status);
 
     row.innerHTML=`
       <div style="flex:1">
