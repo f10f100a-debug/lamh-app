@@ -364,19 +364,34 @@ async function pollWaitingCompetition() {
       ministryLogo.style.display = competition.show_ministry_logo === false ? 'none' : '';
     }
 
+    const participantType = $('#participantType');
     const affiliationLabel = $('#affiliationLabel');
     const affiliationInput = $('#school');
     if (affiliationLabel && affiliationInput) {
-      if (competition.organization_type === 'group') {
-        affiliationLabel.textContent = 'المجموعة / الفريق';
-        affiliationInput.placeholder = 'اكتب اسم المجموعة أو الفريق';
-      } else if (competition.organization_type === 'entity') {
-        affiliationLabel.textContent = 'الجهة';
-        affiliationInput.placeholder = 'اكتب اسم الجهة';
-      } else {
-        affiliationLabel.textContent = 'المدرسة';
-        affiliationInput.placeholder = 'اكتب اسم المدرسة';
+      const syncAffiliationField = () => {
+        const type = participantType?.value || 'school';
+        if (type === 'group') {
+          affiliationLabel.textContent = 'اسم المجموعة / الفريق';
+          affiliationInput.placeholder = 'اكتب اسم المجموعة أو الفريق';
+        } else if (type === 'entity') {
+          affiliationLabel.textContent = 'اسم الجهة';
+          affiliationInput.placeholder = 'اكتب اسم الجهة';
+        } else {
+          affiliationLabel.textContent = 'اسم المدرسة';
+          affiliationInput.placeholder = 'اكتب اسم المدرسة';
+        }
+      };
+
+      if (participantType) {
+        participantType.value = competition.organization_type === 'group'
+          ? 'group'
+          : competition.organization_type === 'entity'
+            ? 'entity'
+            : 'school';
+        participantType.addEventListener('change', syncAffiliationField);
       }
+
+      syncAffiliationField();
     }
 
     const schoolLogo = competition.organization_logo_data_uri || competition.logo_data_uri || competition.logo_url;
