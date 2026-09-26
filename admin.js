@@ -55,6 +55,7 @@ function renderDashboard(){
 
   $('#compTitle').value=c.title||'';
   $('#compOrg').value=c.organization_name||'';
+  if($('#compCode')) $('#compCode').value=c.slug||'';
   $('#compSeconds').value=c.seconds_per_question||20;
   $('#compStatus').value=c.status||'waiting';
 
@@ -597,4 +598,43 @@ $('#sendNotifyBtn')?.addEventListener('click',async()=>{
     $('#notifyBody').value='';
   }catch(e){msg('#notifyMsg',e.message||'تعذر إنشاء التنبيه.',true);}
   finally{btn.disabled=false;}
+});
+
+
+$('#changeCodeBtn')?.addEventListener('click',async()=>{
+  const newCode=$('#compCode').value.trim().toUpperCase();
+  if(!/^[A-Z0-9]{2,12}$/.test(newCode)){
+    msg('#codeMsg','اكتب رمزًا من 2 إلى 12 حرفًا أو رقمًا بالإنجليزية.',true);
+    return;
+  }
+  if(newCode===adminCode){
+    msg('#codeMsg','هذا هو الرمز الحالي.');
+    return;
+  }
+  if(!confirm(`تغيير رمز المسابقة من ${adminCode} إلى ${newCode}؟\nسيتغير رابط وQR الدخول.`)) return;
+
+  const btn=$('#changeCodeBtn');
+  btn.disabled=true;
+  msg('#codeMsg','جارٍ تغيير الرمز...');
+  try{
+    const {data,error}=await db.rpc('admin_change_competition_code',{
+      p_code:adminCode,
+      p_pin:adminPin,
+      p_new_code:newCode
+    });
+    if(error)throw error;
+    const result=Array.isArray(data)?data[0]:data;
+    adminCode=result?.code||newCode;
+    $('#adminCode').value=adminCode;
+    $('#compCode').value=adminCode;
+    const u=new URL(location.href);
+    u.searchParams.set('code',adminCode);
+    history.replaceState(null,'',u.toString());
+    msg('#codeMsg','تم تغيير رمز المسابقة ✓');
+    await loadDashboard();
+  }catch(e){
+    msg('#codeMsg',e.message||'تعذر تغيير رمز المسابقة.',true);
+  }finally{
+    btn.disabled=false;
+  }
 });
