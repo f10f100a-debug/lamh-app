@@ -378,7 +378,10 @@ async function pollWaitingCompetition() {
     if (!competition) throw new Error('المسابقة غير موجودة.');
     const ministryLogo = $('#ministryLogo');
     if (ministryLogo) {
-      ministryLogo.style.display = competition.show_ministry_logo === false ? 'none' : '';
+      const showOfficial = competition.show_official_logo !== false;
+      ministryLogo.style.display = showOfficial ? '' : 'none';
+      ministryLogo.src = competition.official_logo_data_uri || 'assets/ministry.png';
+      ministryLogo.alt = competition.official_logo_data_uri ? 'الشعار الرسمي' : 'وزارة التعليم';
     }
 
     const participantType = $('#participantType');
