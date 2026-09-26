@@ -70,7 +70,10 @@ function renderDashboard(){
 
   $('#dashTitle').textContent=c.title;
   $('#dashCode').textContent=c.slug;
-  if($('#roleBadge')) $('#roleBadge').textContent=adminRole==='owner'?'المالك':adminRole==='supervisor'?'مشرف':'مراقب';
+  if($('#roleBadge')) {
+    const isPlatformOwner=adminRole==='owner' && c.organization_id===PLATFORM_ORG_ID;
+    $('#roleBadge').textContent=isPlatformOwner?'مالك المنصة':adminRole==='owner'?'مدير الجهة':adminRole==='supervisor'?'مشرف':'مراقب';
+  }
 
   $('#statParticipants').textContent=s.participants;
   $('#statCompleted').textContent=s.completed;
@@ -680,7 +683,11 @@ function applyRoleUI(){
     el.classList.toggle('hidden',adminRole!=='owner');
   });
 
-  ['commercialPanel','subscriptionRequestsPanel'].forEach(id=>{
+  document.querySelectorAll('.platform-owner-only').forEach(el=>{
+    el.classList.toggle('hidden',!platformOwner);
+  });
+
+  ['commercialPanel','subscriptionRequestsPanel','platformSecurityPanel'].forEach(id=>{
     const el=$('#'+id);
     if(el) el.classList.toggle('hidden',!platformOwner);
   });
