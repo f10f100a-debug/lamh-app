@@ -9,13 +9,25 @@ let adminPin='';
 let dashboard=null;
 
 $('#publishResultsBtn')?.addEventListener('click',async()=>{
-  if(!confirm('سيتم إظهار الدرجات والترتيب والمتصدرين لجميع المتسابقين. هل تريد إعلان النتائج الآن؟'))return;
-  const button=$('#publishResultsBtn');button.disabled=true;
+  const published=dashboard?.competition?.results_published===true;
+  const actionText=published?'إخفاء النتائج عن المتسابقين؟':'إعلان النتائج لجميع المتسابقين؟';
+  if(!confirm(actionText))return;
+
+  const button=$('#publishResultsBtn');
+  button.disabled=true;
+
   try{
-    const {error}=await db.rpc('admin_publish_results',{p_code:adminCode,p_pin:adminPin});
+    const {error}=await db.rpc('admin_set_results_visibility',{
+      p_code:adminCode,
+      p_pin:adminPin,
+      p_published:!published
+    });
     if(error)throw error;
     await loadDashboard();
-  }catch(e){msg('#publishResultsMsg',e.message||'تعذر إعلان النتائج.',true);button.disabled=false;}
+  }catch(e){
+    msg('#publishResultsMsg',e.message||'تعذر تغيير حالة النتائج.',true);
+    button.disabled=false;
+  }
 });
 
 function msg(id,text,error=false){
@@ -41,9 +53,15 @@ function renderDashboard(){
   const c=dashboard.competition;
   const s=dashboard.stats;
   const published=c.results_published===true;
-  $('#publishResultsBtn').disabled=published||c.status!=='finished';
-  $('#publishResultsBtn').textContent=published?'تم إعلان النتائج ✓':'إعلان النتائج للمتسابقين';
-  msg('#publishResultsMsg',published?'النتائج ظاهرة للمتسابقين.':c.status==='finished'?'النتائج مخفية. يمكنك إعلانها بعد المراجعة.':'النتائج مخفية. اختر «منتهية» من إعدادات المسابقة واحفظ قبل الإعلان.');
+  $('#publishResultsBtn').disabled=!published && c.status!=='finished';
+  $('#publishResultsBtn').textContent=published?'إخفاء النتائج عن المتسابقين':'إعلان النتائج للمتسابقين';
+  msg('#publishResultsMsg',
+    published
+      ? 'النتائج ظاهرة حاليًا للمتسابقين. يمكنك إخفاؤها وإعادة مراجعتها.'
+      : c.status==='finished'
+        ? 'النتائج مخفية. يمكنك إعلانها بعد المراجعة.'
+        : 'النتائج مخفية. اختر «منتهية» من إعدادات المسابقة واحفظ قبل الإعلان.'
+  );
 
   $('#dashTitle').textContent=c.title;
   $('#dashCode').textContent=c.slug;
