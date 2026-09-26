@@ -1021,7 +1021,8 @@ async function loadSubscriptionRequests(){
       <div class="actions" style="flex-wrap:wrap">
         <button class="small-btn receipt-btn" type="button">عرض الإيصال</button>
         ${r.status==='approved' && r.subscription_status!=='expired'?'<button class="small-btn danger-btn end-sub-btn" type="button">إنهاء الاشتراك</button>':''}
-        <button class="small-btn archive-request-btn" type="button">إزالة من القائمة</button>
+        ${r.status==='approved'?'<button class="small-btn renew-sub-btn" type="button">تجديد شهر</button>':''}
+        ${(r.subscription_status==='expired'||r.status==='rejected')?'<button class="small-btn archive-request-btn" type="button">إزالة من القائمة</button>':''}
         ${r.status!=='approved'&&r.status!=='rejected'?'<button class="small-btn review-btn" type="button">تحت المراجعة</button>':''}
         ${r.status!=='approved'?'<button class="small-btn approve-btn" type="button">اعتماد وتفعيل</button>':''}
         ${r.status!=='approved'&&r.status!=='rejected'?'<button class="small-btn danger-btn reject-btn" type="button">رفض</button>':''}
@@ -1059,6 +1060,17 @@ async function loadSubscriptionRequests(){
     row.querySelector('.review-btn')?.addEventListener('click',()=>reviewSubscriptionRequest(r.id,'under_review'));
     row.querySelector('.approve-btn')?.addEventListener('click',()=>reviewSubscriptionRequest(r.id,'approved'));
     row.querySelector('.reject-btn')?.addEventListener('click',()=>reviewSubscriptionRequest(r.id,'rejected'));
+
+    row.querySelector('.renew-sub-btn')?.addEventListener('click',async()=>{
+      if(!confirm('تجديد اشتراك هذه الجهة لمدة شهر؟'))return;
+      const {data,error}=await db.rpc('owner_renew_subscription',{
+        p_code:adminCode,p_pin:adminPin,p_request_id:r.id,p_months:1
+      });
+      if(error){msg('#subscriptionRequestsMsg',error.message||'تعذر تجديد الاشتراك.',true);return;}
+      const rr=Array.isArray(data)?data[0]:data;
+      msg('#subscriptionRequestsMsg','تم تجديد الاشتراك حتى '+new Date(rr.ends_at).toLocaleDateString('ar-SA')+' ✓');
+      await loadSubscriptionRequests();
+    });
 
     row.querySelector('.end-sub-btn')?.addEventListener('click',async()=>{
       if(!confirm('إنهاء اشتراك هذه الجهة الآن؟ سيتم إيقاف دخول الإدارة والمتسابقين.'))return;
