@@ -359,6 +359,11 @@ async function pollWaitingCompetition() {
     if (error) throw error;
     competition = Array.isArray(data) ? data[0] : data;
     if (!competition) throw new Error('المسابقة غير موجودة.');
+    const ministryLogo = $('#ministryLogo');
+    if (ministryLogo) {
+      ministryLogo.style.display = competition.show_ministry_logo === false ? 'none' : '';
+    }
+
     const schoolLogo = competition.organization_logo_data_uri || competition.logo_data_uri || competition.logo_url;
     if (schoolLogo) document.querySelectorAll('header.top img.logo').forEach(img => {
       if (img.alt !== 'وزارة التعليم') img.src = schoolLogo;
