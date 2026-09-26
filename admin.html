@@ -26,9 +26,9 @@
     <label>رمز المسابقة</label>
     <input id="adminCode" value="A1" maxlength="12" autocapitalize="characters" autocomplete="off">
 
-    <label>رمز الإدارة / المشرف / المراقب</label>
+    <label>رمز الدخول</label>
     <input id="adminPin" type="password" inputmode="numeric" maxlength="6" placeholder="••••••">
-    <p class="hint">يتم تحديد الصلاحية تلقائيًا حسب رمز الدخول: مالك، مشرف، أو مراقب.</p>
+    <p class="hint">يتم تحديد الصلاحية تلقائيًا حسب حساب الجهة.</p>
 
     <button id="loginBtn" class="primary">دخول لوحة التحكم</button>
     <p id="loginMsg" class="msg"></p>
@@ -225,7 +225,7 @@
       <div id="adminLeaderboard"></div>
     </section>
 
-    <section class="panel owner-only" id="commercialPanel">
+    <section class="panel owner-only platform-owner-only" id="commercialPanel">
       <div class="section-head">
         <h2>الإعدادات التجارية</h2>
         <button id="refreshCommercialBtn" class="small-btn">تحديث</button>
@@ -258,7 +258,7 @@
       <p id="commercialMsg" class="msg"></p>
     </section>
 
-    <section class="panel owner-only" id="subscriptionRequestsPanel">
+    <section class="panel owner-only platform-owner-only" id="subscriptionRequestsPanel">
       <div class="section-head">
         <h2>طلبات الاشتراك</h2>
         <div class="actions">
@@ -288,7 +288,7 @@
       <div id="staffList"></div>
     </section>
 
-    <section class="panel danger-zone owner-only">
+    <section class="panel danger-zone owner-only platform-owner-only" id="platformSecurityPanel">
       <h2>أمان لوحة الإدارة</h2>
 
       <label>رمز الإدارة الجديد</label>
@@ -302,6 +302,6 @@
 
 </main>
 
-<script src="admin.js?v=20260926-16"></script>
+<script src="admin.js?v=20260926-17"></script>
 </body>
 </html>
