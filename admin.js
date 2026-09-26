@@ -1009,8 +1009,9 @@ async function loadSubscriptionRequests(){
         <div class="hint">${escapeHtml(r.request_number||'')} • ${escapeHtml(r.contact_name||'')} • ${escapeHtml(r.phone||'')}</div>
         <div class="hint">الباقة الحالية:</div>
         <select class="request-plan-select" ${r.status==='approved'?'disabled':''} style="max-width:220px;margin:6px 0 8px">
+          <option value="group" ${r.plan_code==='group'?'selected':''}>مجموعة — 50 ر.س</option>
           <option value="school" ${r.plan_code==='school'?'selected':''}>مدرسة — 150 ر.س</option>
-          <option value="pro" ${r.plan_code==='pro'?'selected':''}>احترافية — 200 ر.س</option>
+          <option value="entity" ${r.plan_code==='entity'?'selected':''}>جهة — 200 ر.س</option>
         </select>
         <div class="hint">الحالة: ${escapeHtml(statusLabel)}</div>
         ${r.email?`<div class="hint">${escapeHtml(r.email)}</div>`:''}
