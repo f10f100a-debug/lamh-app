@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>الاشتراك في لَمْح</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,Arial,sans-serif;color:#16364a;background:#f4f8fb}
+*{box-sizing:border-box}body{margin:0}.wrap{max-width:880px;margin:auto;padding:24px}.hero{background:linear-gradient(135deg,#16485c,#0e9f8a);color:#fff;border-radius:28px;padding:28px;margin-bottom:18px}.hero h1{margin:0 0 8px;font-size:34px}.hero p{margin:0;opacity:.94}.panel{background:#fff;border-radius:22px;padding:22px;margin:16px 0;box-shadow:0 10px 30px rgba(22,54,74,.08)}.plans{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.plan{border:2px solid #e4edf2;border-radius:18px;padding:18px;cursor:pointer}.plan.active{border-color:#0e9f8a;background:#f1fbf8}.price{font-size:30px;font-weight:800}.muted{color:#6b7d88;font-size:14px}label{display:block;font-weight:700;margin:12px 0 6px}input,select,textarea{width:100%;padding:13px;border:1px solid #cedbe2;border-radius:12px;font-size:16px;background:#fff}button{border:0;border-radius:12px;padding:14px 18px;font-weight:800;font-size:16px;cursor:pointer}.primary{background:#0e9f8a;color:#fff;width:100%;margin-top:16px}.secondary{background:#eaf2f6;color:#16364a}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.bank{background:#f7fafc;border:1px dashed #aebfc9;border-radius:14px;padding:14px}.status{padding:14px;border-radius:14px;background:#eef8f5;margin-top:12px}.hidden{display:none}.msg{margin-top:10px}.error{color:#b42318}.ok{color:#08765f}.receipt-preview{max-width:220px;border-radius:12px;margin-top:10px;display:none}@media(max-width:650px){.plans,.grid{grid-template-columns:1fr}.wrap{padding:14px}.hero h1{font-size:28px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+<section class="hero">
+<h1>لَمْح</h1>
+<p>اشترك في منصة المسابقات التفاعلية، وارفع إيصال التحويل ليتم تفعيل حساب جهتك بعد المراجعة.</p>
+</section>
+
+<section class="panel">
+<h2>اختر الباقة</h2>
+<div id="plans" class="plans"><p class="muted">جارٍ تحميل الباقات...</p></div>
+</section>
+
+<section class="panel">
+<h2>بيانات التحويل البنكي</h2>
+<div id="bankBox" class="bank"><p class="muted">جارٍ تحميل بيانات التحويل...</p></div>
+</section>
+
+<section class="panel">
+<h2>طلب الاشتراك</h2>
+<div class="grid">
+<div><label>اسم الجهة</label><input id="orgName" placeholder="مثال: مدرسة ..."></div>
+<div><label>اسم المسؤول</label><input id="contactName" placeholder="الاسم"></div>
+<div><label>رقم الجوال</label><input id="phone" inputmode="numeric" placeholder="05xxxxxxxx" maxlength="10"></div>
+<div><label>البريد الإلكتروني</label><input id="email" type="email" placeholder="اختياري"></div>
+</div>
+<label>رمز إدارة الحساب</label>
+<input id="ownerPin" type="password" inputmode="numeric" maxlength="6" placeholder="6 أرقام">
+<p class="muted">احتفظ بهذا الرمز؛ ستستخدمه للدخول إلى لوحة إدارة لَمْح بعد اعتماد الاشتراك.</p>
+<label>صورة إيصال التحويل</label>
+<input id="receipt" type="file" accept="image/png,image/jpeg,image/webp">
+<img id="receiptPreview" class="receipt-preview" alt="معاينة الإيصال">
+<button id="submitBtn" class="primary">إرسال طلب الاشتراك</button>
+<p id="msg" class="msg"></p>
+</section>
+
+<section id="statusPanel" class="panel hidden">
+<h2>متابعة الطلب</h2>
+<div id="statusBox" class="status"></div>
+<button id="refreshStatusBtn" class="secondary" style="margin-top:12px">تحديث الحالة</button>
+</section>
+</main>
+
+<script>
+const SUPABASE_URL='https://qgfuqmturtpglngpmtau.supabase.co';
+const SUPABASE_KEY='sb_publishable_G3ZOB1cLQmEeyvx4UjdNew_9IMSY2Vc';
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=s=>document.querySelector(s);
+let selectedPlan='school';
+let receiptData='';
+let requestToken=localStorage.getItem('lamh_subscription_request_token')||'';
+
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+
+async function loadOffer(){
+ const {data,error}=await db.rpc('get_subscription_offer');
+ if(error){$('#plans').innerHTML='<p class="error">تعذر تحميل الباقات.</p>';return}
+ const r=Array.isArray(data)?data[0]:data;
+ const plans=r?.plans||[];
+ $('#plans').innerHTML='';
+ plans.forEach(p=>{
+   const d=document.createElement('div');
+   d.className='plan'+(p.code===selectedPlan?' active':'');
+   d.dataset.plan=p.code;
+   d.innerHTML='<strong>'+esc(p.name)+'</strong><div class="price">'+Number(p.monthly_price||0).toFixed(0)+' ر.س</div><div class="muted">شهريًا</div><p class="muted">'+p.max_competitions+' مسابقة • '+p.max_questions_per_competition+' سؤال لكل مسابقة • '+p.max_participants+' مشارك</p>';
+   d.onclick=()=>{selectedPlan=p.code;document.querySelectorAll('.plan').forEach(x=>x.classList.toggle('active',x.dataset.plan===selectedPlan));};
+   $('#plans').appendChild(d);
+ });
+ const b=r?.bank||{};
+ $('#bankBox').innerHTML=(b.bank_name||b.account_name||b.iban)
+ ? '<div><strong>البنك:</strong> '+esc(b.bank_name||'—')+'</div><div><strong>اسم المستفيد:</strong> '+esc(b.account_name||'—')+'</div><div><strong>الآيبان:</strong> <span dir="ltr">'+esc(b.iban||'—')+'</span></div>'+(b.transfer_note?'<p class="muted">'+esc(b.transfer_note)+'</p>':'')
+ : '<p class="muted">بيانات التحويل ستظهر هنا بعد إدخالها من المالك.</p>';
+}
+
+$('#receipt').addEventListener('change',e=>{
+ const f=e.target.files?.[0]; if(!f)return;
+ if(f.size>1024*1024){$('#msg').textContent='صورة الإيصال كبيرة. اختر صورة أقل من 1 ميجابايت.';$('#msg').className='msg error';e.target.value='';return}
+ const rd=new FileReader();
+ rd.onload=()=>{receiptData=rd.result;$('#receiptPreview').src=receiptData;$('#receiptPreview').style.display='block';};
+ rd.readAsDataURL(f);
+});
+
+$('#submitBtn').addEventListener('click',async()=>{
+ const btn=$('#submitBtn'); btn.disabled=true; $('#msg').textContent='جارٍ إرسال الطلب...'; $('#msg').className='msg';
+ try{
+   if(!receiptData)throw new Error('ارفع صورة إيصال التحويل.');
+   const pin=$('#ownerPin').value.trim();
+   if(!/^\d{6}$/.test(pin))throw new Error('رمز الإدارة يجب أن يكون 6 أرقام.');
+   const {data,error}=await db.rpc('submit_subscription_request',{
+     p_organization_name:$('#orgName').value.trim(),
+     p_contact_name:$('#contactName').value.trim(),
+     p_phone:$('#phone').value.trim(),
+     p_email:$('#email').value.trim(),
+     p_plan_code:selectedPlan,
+     p_receipt_data_uri:receiptData,
+     p_owner_pin:pin
+   });
+   if(error)throw error;
+   const r=Array.isArray(data)?data[0]:data;
+   requestToken=r.public_token;
+   localStorage.setItem('lamh_subscription_request_token',requestToken);
+   $('#msg').textContent='تم استلام طلبك بنجاح. رقم الطلب: '+r.request_number;
+   $('#msg').className='msg ok';
+   await loadStatus();
+ }catch(e){$('#msg').textContent=e.message||'تعذر إرسال الطلب.';$('#msg').className='msg error'}
+ finally{btn.disabled=false}
+});
+
+async function loadStatus(){
+ if(!requestToken)return;
+ const {data,error}=await db.rpc('get_subscription_request_status',{p_token:requestToken});
+ if(error||!data)return;
+ const r=Array.isArray(data)?data[0]:data;
+ const labels={receipt_uploaded:'تم رفع الإيصال وبانتظار المراجعة',under_review:'الطلب تحت المراجعة',approved:'تم اعتماد الاشتراك',rejected:'تم رفض الطلب'};
+ let html='<strong>'+esc(r.request_number||'')+'</strong><p>'+esc(labels[r.status]||r.status)+'</p>';
+ if(r.owner_note)html+='<p class="muted">'+esc(r.owner_note)+'</p>';
+ if(r.status==='approved'&&r.competition_code){
+   html+='<p><strong>رمز المسابقة:</strong> '+esc(r.competition_code)+'</p><a href="'+esc(r.admin_url)+'" class="primary" style="display:block;text-align:center;text-decoration:none">فتح لوحة الإدارة</a>';
+ }
+ $('#statusBox').innerHTML=html;
+ $('#statusPanel').classList.remove('hidden');
+}
+$('#refreshStatusBtn').addEventListener('click',loadStatus);
+loadOffer(); loadStatus();
+</script>
+</body>
+</html>
