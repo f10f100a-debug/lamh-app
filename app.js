@@ -42,7 +42,7 @@ let submitting = false;
 const $ = (selector) => document.querySelector(selector);
 
 function syncParticipantAffiliationField() {
-  const type = $('#participantType')?.value || 'school';
+  const type = document.querySelector('input[name="participantType"]:checked')?.value || 'school';
   const input = $('#school');
   if (!input) return;
 
@@ -55,7 +55,7 @@ function syncParticipantAffiliationField() {
   }
 }
 
-$('#participantType')?.addEventListener('change', syncParticipantAffiliationField);
+document.querySelectorAll('input[name="participantType"]').forEach(radio => radio.addEventListener('change', syncParticipantAffiliationField));
 syncParticipantAffiliationField();
 
 function applyCompetitionBranding(comp){
