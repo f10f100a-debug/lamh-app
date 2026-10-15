@@ -544,3 +544,12 @@ footer strong {
 #affiliationLabel {
   display: none;
 }
+
+/* خيارات الانتماء المباشرة بدل القائمة المنسدلة */
+.affiliation-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0 16px;direction:rtl}
+.affiliation-choice{position:relative;display:block;margin:0;cursor:pointer}
+.affiliation-choice input{position:absolute;opacity:0;width:1px;height:1px}
+.affiliation-choice span{display:flex;align-items:center;justify-content:center;min-height:62px;border:2px solid #dbe6ea;border-radius:14px;background:#fbfdfe;color:#15445a;font-weight:800;font-size:17px;transition:background .15s,border-color .15s}
+.affiliation-choice input:checked+span{background:#e4f6f4;border-color:#159b9a;color:#086c70;box-shadow:0 0 0 2px rgba(21,155,154,.09)}
+.affiliation-choice input:focus-visible+span{outline:3px solid #159b9a;outline-offset:3px}
+@media(max-width:370px){.affiliation-choices{gap:6px}.affiliation-choice span{font-size:15px;min-height:55px}}
