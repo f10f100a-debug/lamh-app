@@ -7,7 +7,7 @@
   <link rel="manifest" href="manifest.json">
   <title>لَمْح | LAMH</title>
 
-  <link rel="stylesheet" href="styles.css?v=20260926-21">
+  <link rel="stylesheet" href="styles.css?v=20261016-1">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -60,11 +60,11 @@
       >
 
       <label for="participantType">الانتماء</label>
-      <select id="participantType" required>
-        <option value="school">مدرسة</option>
-        <option value="group">مجموعة</option>
-        <option value="entity">جهة</option>
-      </select>
+      <div class="affiliation-choices" role="radiogroup" aria-label="الانتماء">
+        <label class="affiliation-choice"><input type="radio" name="participantType" value="school" checked required><span>مدرسة</span></label>
+        <label class="affiliation-choice"><input type="radio" name="participantType" value="group"><span>مجموعة</span></label>
+        <label class="affiliation-choice"><input type="radio" name="participantType" value="entity"><span>جهة</span></label>
+      </div>
 
       <label for="school" id="affiliationLabel">اسم المدرسة</label>
       <input
