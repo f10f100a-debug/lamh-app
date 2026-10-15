@@ -85,10 +85,9 @@ function applyCompetitionBranding(comp){
     }
   }
 
-  const participantType=$('#participantType');
-  if(participantType){
-    participantType.value=comp.organization_type==='group'?'group':comp.organization_type==='entity'?'entity':'school';
-  }
+  const selectedType=comp.organization_type==='group'?'group':comp.organization_type==='entity'?'entity':'school';
+  const participantType=document.querySelector('input[name="participantType"][value="'+selectedType+'"]');
+  if(participantType) participantType.checked=true;
   syncParticipantAffiliationField();
 }
 
