@@ -601,6 +601,19 @@ async function deleteParticipant(p){
   }catch(e){alert(e.message||'تعذر حذف المشارك.');}
 }
 
+$('#resetAllParticipantsBtn')?.addEventListener('click',async()=>{
+  if(!confirm('تصفير محاولات جميع المتسابقين في هذه المسابقة؟\\nستُحذف الإجابات والمحاولات، وستبقى أسماء المتسابقين وتسجيلاتهم.')) return;
+  const btn=$('#resetAllParticipantsBtn');
+  btn.disabled=true;
+  try{
+    const {data,error}=await db.rpc('admin_reset_all_participants',{p_code:adminCode,p_pin:adminPin});
+    if(error) throw error;
+    await Promise.all([loadParticipants(),loadDashboard()]);
+    alert('تم تصفير محاولات '+(data?.reset_participants??'جميع')+' متسابق بنجاح ✓');
+  }catch(e){alert(e.message||'تعذر تصفير المحاولات.');}
+  finally{btn.disabled=false;}
+});
+
 $('#clearParticipantsBtn')?.addEventListener('click',async()=>{
   if(!confirm('سيتم حذف جميع المشاركين وإجاباتهم ومحاولاتهم. هل أنت متأكد؟')) return;
   try{
