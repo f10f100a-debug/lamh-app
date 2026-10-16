@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="admin.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -152,6 +153,15 @@
       </div>
 
       <div id="questionsList"></div>
+      <section style="margin-top:20px">
+        <h3>استيراد الأسئلة دفعة واحدة</h3>
+        <p class="hint">ملف Excel أو لصق من جدول: السؤال، الخيار A، الخيار B، الخيار C، الخيار D، الإجابة الصحيحة (A/B/C/D).</p>
+        <input id="bulkFile" type="file" accept=".xlsx,.xls,.csv">
+        <textarea id="bulkText" rows="5" placeholder="أو الصق هنا صفوف Excel، كل سؤال في سطر"></textarea>
+        <div class="actions"><button id="bulkPreview" class="small-btn" type="button">معاينة الأسئلة</button><button id="bulkSave" class="primary" type="button" disabled>حفظ جميع الأسئلة</button></div>
+        <p id="bulkMsg" class="msg"></p>
+        <div id="bulkList"></div>
+      </section>
     </section>
 
     <section id="questionEditor" class="panel hidden">
@@ -326,6 +336,6 @@
 
 </main>
 
-<script src="admin.js?v=20261016-2"></script>
+<script src="admin.js?v=bulk16"></script>
 </body>
 </html>
