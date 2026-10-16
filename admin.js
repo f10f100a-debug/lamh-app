@@ -1195,3 +1195,58 @@ async function loadSubscriptionSummary(){
       : 'هذه هي حدود باقة الجهة الحالية.'
   );
 }
+
+
+// Bulk question import: validate first, then append via existing admin RPC.
+(() => {
+  const el = id => document.getElementById(id);
+  let rows = [];
+  const parse = async () => {
+    if (el('bulkFile').files.length) {
+      if (!window.XLSX) throw Error('تعذر تحميل قارئ Excel');
+      const buffer = await el('bulkFile').files[0].arrayBuffer();
+      const book = XLSX.read(buffer, {type:'array'});
+      return XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], {header:1,defval:''});
+    }
+    return el('bulkText').value.trim().split(/\r?\n/).map(line=>line.split('\t'));
+  };
+  el('bulkPreview').onclick = async () => {
+    rows=[]; el('bulkSave').disabled=true; el('bulkList').textContent='';
+    try {
+      const input=await parse(), errors=[];
+      input.forEach((line,i)=>{
+        const cells=line.slice(0,6).map(x=>String(x??'').trim());
+        if (!cells.some(Boolean)) return;
+        if(i===0 && /السؤال|question/i.test(cells[0]) && /الإجابة|correct/i.test(cells[5])) return;
+        if(cells.length!==6 || cells.some(x=>!x) || !/^[ABCD]$/i.test(cells[5])) {errors.push(i+1);return;}
+        rows.push(cells);
+      });
+      if(errors.length) {rows=[];el('bulkMsg').textContent='راجع الصفوف غير الصحيحة: '+errors.join('، ');return;}
+      el('bulkMsg').textContent='عدد الأسئلة الجاهزة: '+rows.length;
+      el('bulkList').textContent=rows.map((r,i)=>(i+1)+'. '+r[0]+' — '+r[5]).join('\n');
+      el('bulkList').style.whiteSpace='pre-wrap';
+      el('bulkSave').disabled=!rows.length;
+    } catch(e) {el('bulkMsg').textContent=e.message;}
+  };
+  el('bulkSave').onclick=async()=>{
+    if(!rows.length || !adminCode || !adminPin || !dashboard) return;
+    if(!confirm('إضافة '+rows.length+' سؤالًا إلى المسابقة الحالية دون حذف الأسئلة السابقة؟')) return;
+    el('bulkSave').disabled=true;
+    const max=Math.max(0,...(dashboard.questions||[]).map(q=>Number(q.question_order)||0));
+    let count=0;
+    for(const r of rows){
+      const {error}=await db.rpc('admin_save_question',{
+        p_code:adminCode,p_pin:adminPin,p_question_id:null,
+        p_question_order:max+count+1,p_question_text:r[0],
+        p_option_a:r[1],p_option_b:r[2],p_option_c:r[3],p_option_d:r[4],
+        p_correct_option:r[5].toUpperCase()
+      });
+      if(error){el('bulkMsg').textContent='حُفظ '+count+' سؤالًا، ثم حدث خطأ: '+error.message+'؛ تجنب إعادة استيراد الملف كاملًا.';await loadDashboard();return;}
+      count++;
+      el('bulkMsg').textContent='جارٍ الحفظ: '+count+'/'+rows.length;
+    }
+    rows=[];el('bulkList').textContent='';
+    el('bulkMsg').textContent='تمت إضافة '+count+' سؤالًا بنجاح';
+    await loadDashboard();
+  };
+})();
