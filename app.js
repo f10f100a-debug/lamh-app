@@ -148,7 +148,7 @@ async function restoreParticipantSession(){
     return true;
   }catch(e){
     console.warn('SESSION RESTORE',e);
-    clearParticipantSession();
+    // Retain registration on transient connectivity or server failures.
     return false;
   }
 }
@@ -706,7 +706,7 @@ if (againButton) {
       clearInterval(waitingTimer);
 
       stopWaiting();
-      clearParticipantSession();
+      // Do not erase a registered participant when navigating back.
       participantId = null;
       competitionId = null;
       competition = null;
