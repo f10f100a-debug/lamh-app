@@ -627,10 +627,17 @@ async function submitAnswer(question,selectedIndex,selectedButton){
   try{
     const {data,error}=await db.rpc('submit_answer',{p_participant_id:participantId,p_question_id:question.id,p_selected_index:selectedIndex,p_response_ms:responseMs});
     if(error)throw error;
-    clearInterval(waitingTimer);
+    // Keep the answered question visible until its full server-allocated time expires.
+    // The selected option stays locked, and the existing countdown remains active.
     const r=Array.isArray(data)?data[0]:data;
-    await new Promise(res=>setTimeout(res,r?.timed_out?150:250));
-    submitting=false;await renderQuestion();
+    submitting=false;
+    if(performance.now()>=questionDeadline){
+      clearInterval(waitingTimer);
+      await renderQuestion();
+    }else{
+      const timer=$('#questionTimer');
+      if(timer)timer.setAttribute('aria-label','تم حفظ الإجابة، انتظر انتهاء وقت السؤال');
+    }
   }catch(e){
     submitting=false;
     const expired=performance.now()>=questionDeadline;
