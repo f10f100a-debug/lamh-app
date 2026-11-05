@@ -118,6 +118,7 @@ function renderDashboard(){
 
   renderQuestions(dashboard.questions||[]);
   renderLeaderboard(dashboard.leaderboard||[]);
+  void loadFullLeaderboard();
 }
 
 function renderQuestions(items){
@@ -157,6 +158,18 @@ function renderQuestions(items){
   });
 }
 
+async function loadFullLeaderboard(){
+  const box=$('#adminLeaderboard');
+  if(!box || !adminCode || !adminPin)return;
+  try{
+    const {data,error}=await db.rpc('admin_get_full_leaderboard',{p_code:adminCode,p_pin:adminPin});
+    if(error)throw error;
+    renderLeaderboard(Array.isArray(data)?data:[]);
+  }catch(e){
+    msg('#publishResultsMsg','تعذر تحميل الترتيب الكامل: '+(e.message||'خطأ في الاتصال'),true);
+  }
+}
+
 function renderLeaderboard(items){
   const box=$('#adminLeaderboard');
   box.innerHTML='';
@@ -175,7 +188,7 @@ function renderLeaderboard(items){
         <strong>${escapeHtml(x.full_name||'متسابق')}</strong>
         <div class="hint">${escapeHtml(x.school||'')}</div>
       </div>
-      <strong>${x.correct_answers} صحيحة</strong>
+      <div><strong>${x.correct_answers} صحيحة</strong><div class="hint">الزمن: ${(Number(x.total_response_ms||0)/1000).toFixed(2)} ثانية</div></div>
     `;
     box.appendChild(row);
   });
