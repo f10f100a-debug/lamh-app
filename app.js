@@ -35,6 +35,7 @@ let questionDeadline = 0;
 let resultPollTimer = null;
 let resultGeneration = 0;
 let submitting = false;
+let selectedAnswerIndex = null;
 
 
 /* ---------- أدوات ---------- */
@@ -563,18 +564,19 @@ function getQuestionOptions(question) {
 async function renderQuestion(){
   try{
     const {data,error}=await db.rpc('get_current_question',{p_participant_id:participantId});
-    if(error) throw error;
+    if(error)throw error;
     const r=Array.isArray(data)?data[0]:data;
-    if(r?.completed) return finishCompetition();
+    if(r?.completed)return finishCompetition();
     const q=r?.question;
-    if(!q) throw new Error('تعذر تحميل السؤال.');
+    if(!q)throw new Error('تعذر تحميل السؤال.');
     let session=r;
     if(r.needs_start){
       const started=await db.rpc('start_question_session',{p_participant_id:participantId,p_question_id:q.id});
-      if(started.error) throw started.error;
+      if(started.error)throw started.error;
       session=Array.isArray(started.data)?started.data[0]:started.data;
     }
     currentQuestion=q;
+    selectedAnswerIndex=null;
     const nextButton=$('#nextQuestionButton');
     if(nextButton){nextButton.disabled=true;nextButton.hidden=true;}
     const qnum=$('#qnum'),qe=$('#question'),ae=$('#answers');
@@ -583,88 +585,104 @@ async function renderQuestion(){
     if(ae)ae.innerHTML='';
     [q.option_a,q.option_b,q.option_c,q.option_d].forEach((option,index)=>{
       if(option==null)return;
-      const b=document.createElement('button');b.type='button';b.className='answer';b.textContent=String(option);
-      b.onclick=()=>submitAnswer(q,index,b);ae?.appendChild(b);
+      const button=document.createElement('button');
+      button.type='button';button.className='answer';button.textContent=String(option);
+      button.onclick=()=>selectAnswer(index);
+      ae?.appendChild(button);
     });
     questionStartedAt=performance.now();
     startServerQuestionCountdown(session.expires_at,q.id,session.remaining_ms);
   }catch(e){console.error('QUESTION ERROR',e);setMessage(e.message||'تعذر تحميل السؤال.',true);}
 }
+
+function selectAnswer(index){
+  if(submitting||performance.now()>=questionDeadline)return;
+  selectedAnswerIndex=index;
+  document.querySelectorAll('#answers button').forEach((button,i)=>{
+    button.classList.toggle('selected',i===index);
+    button.setAttribute('aria-pressed',i===index?'true':'false');
+  });
+  const nextButton=$('#nextQuestionButton');
+  if(nextButton){nextButton.hidden=false;nextButton.disabled=false;}
+}
+
 function startServerQuestionCountdown(expiresAt,qid,remainingMs){
   clearInterval(waitingTimer);
   let timer=$('#questionTimer');
   if(!timer){timer=document.createElement('div');timer.id='questionTimer';timer.className='countdown';$('#quiz')?.insertBefore(timer,$('#question'));}
-  const initial = Number.isFinite(remainingMs) ? remainingMs : new Date(expiresAt).getTime() - (Date.now() + serverClockOffset);
-  questionDeadline = performance.now() + Math.max(0, initial);
+  const initial=Number.isFinite(remainingMs)?remainingMs:new Date(expiresAt).getTime()-(Date.now()+serverClockOffset);
+  questionDeadline=performance.now()+Math.max(0,initial);
   const tick=()=>{
     const remain=questionDeadline-performance.now();
     timer.textContent=`${Math.max(0,Math.ceil(remain/1000))} ث`;
     if(remain<=0){
+      clearInterval(waitingTimer);
+      document.querySelectorAll('#answers button').forEach(button=>button.disabled=true);
       const nextButton=$('#nextQuestionButton');
       if(nextButton){nextButton.disabled=true;nextButton.hidden=true;}
-      document.querySelectorAll('#answers button').forEach(b=>b.disabled=true);
-      clearInterval(waitingTimer);
-      void expireServerQuestion(qid);
+      if(!submitting)void finalizeAnswer(qid,true);
     }
   };
   waitingTimer=setInterval(tick,100);tick();
 }
-async function expireServerQuestion(qid){
-  if(submitting)return;submitting=true;
-  try{const {data,error}=await db.rpc('expire_question_session',{p_participant_id:participantId,p_question_id:qid});if(error)throw error;submitting=false;
-    const result=Array.isArray(data)?data[0]:data;
-    if(result?.expired===false) return startServerQuestionCountdown(null,qid,result.remaining_ms);
-    await renderQuestion();
-  }
-  catch(e){submitting=false;console.error('EXPIRE ERROR',e);const timer=$('#questionTimer');if(timer)timer.textContent='جارٍ إعادة الاتصال...';waitingTimer=setTimeout(()=>expireServerQuestion(qid),2000);}
-}
 
-
-/* =========================================================
-   6 ـ إرسال الإجابة
-   ========================================================= */
-
-async function submitAnswer(question,selectedIndex,selectedButton){
-  if(submitting)return;submitting=true;
-  const responseMs=Math.max(0,Math.round(performance.now()-questionStartedAt));
-  const buttons=document.querySelectorAll('#answers button');buttons.forEach(b=>b.disabled=true);selectedButton?.classList.add('selected');
+async function finalizeAnswer(qid,fromTimeout=false){
+  if(submitting)return;
+  submitting=true;
+  const chosen=selectedAnswerIndex;
+  const buttons=document.querySelectorAll('#answers button');
+  buttons.forEach(button=>button.disabled=true);
+  const nextButton=$('#nextQuestionButton');
+  if(nextButton){nextButton.disabled=true;nextButton.hidden=true;}
   try{
-    const {data,error}=await db.rpc('submit_answer',{p_participant_id:participantId,p_question_id:question.id,p_selected_index:selectedIndex,p_response_ms:responseMs});
+    // The server computes the authoritative response time from session start.
+    // On timeout, save the last selected option if the server deadline allows it.
+    const {error}=await db.rpc('submit_answer',{
+      p_participant_id:participantId,
+      p_question_id:qid,
+      p_selected_index:chosen===null?-1:chosen,
+      p_response_ms:Math.max(0,Math.round(performance.now()-questionStartedAt))
+    });
     if(error)throw error;
-    // Keep the answered question visible until its full server-allocated time expires.
-    // The selected option stays locked, and the existing countdown remains active.
-    const r=Array.isArray(data)?data[0]:data;
+    clearInterval(waitingTimer);
+    selectedAnswerIndex=null;
     submitting=false;
-    if(performance.now()>=questionDeadline){
-      clearInterval(waitingTimer);
-      await renderQuestion();
-    }else{
-      const nextButton=$('#nextQuestionButton');
-      if(nextButton){nextButton.hidden=false;nextButton.disabled=false;}
-      const timer=$('#questionTimer');
-      if(timer)timer.setAttribute('aria-label','تم حفظ الإجابة؛ يمكنك الانتقال للسؤال التالي');
-    }
+    await renderQuestion();
   }catch(e){
+    console.error('ANSWER ERROR',e);
     submitting=false;
-    const expired=performance.now()>=questionDeadline;
-    buttons.forEach(b=>b.disabled=expired);selectedButton?.classList.remove('selected');
-    if(expired){clearInterval(waitingTimer);waitingTimer=setTimeout(()=>expireServerQuestion(question.id),1000);}
-    alert(e.message||'تعذر تسجيل الإجابة.');
+    if(performance.now()>=questionDeadline||fromTimeout){
+      // A server-side expiry safely marks a missed question if the answer was too late.
+      try{
+        const {data,error}=await db.rpc('expire_question_session',{p_participant_id:participantId,p_question_id:qid});
+        if(error)throw error;
+        const result=Array.isArray(data)?data[0]:data;
+        if(result?.expired===false){
+          buttons.forEach(button=>button.disabled=false);
+          startServerQuestionCountdown(null,qid,result.remaining_ms);
+          return;
+        }
+        selectedAnswerIndex=null;
+        await renderQuestion();
+      }catch(expireError){
+        console.error('EXPIRE ERROR',expireError);
+        const timer=$('#questionTimer');
+        if(timer)timer.textContent='جارٍ إعادة الاتصال...';
+        waitingTimer=setTimeout(()=>finalizeAnswer(qid,true),2000);
+      }
+    }else{
+      buttons.forEach(button=>button.disabled=false);
+      if(nextButton){nextButton.disabled=chosen===null;nextButton.hidden=chosen===null;}
+      alert(e.message||'تعذر تسجيل الإجابة. حاول مجددًا قبل انتهاء الوقت.');
+    }
   }
 }
 
-
-// The Next button is available only after the answer is saved successfully.
 const nextQuestionButton=$('#nextQuestionButton');
 if(nextQuestionButton){
-  nextQuestionButton.addEventListener('click',async()=>{
-    if(submitting || nextQuestionButton.disabled || nextQuestionButton.hidden)return;
-    submitting=true;
-    nextQuestionButton.disabled=true;
-    nextQuestionButton.hidden=true;
-    clearInterval(waitingTimer);
-    try{await renderQuestion();}
-    finally{submitting=false;}
+  nextQuestionButton.addEventListener('click',()=>{
+    if(submitting||nextQuestionButton.disabled||nextQuestionButton.hidden||!currentQuestion?.id)return;
+    void finalizeAnswer(currentQuestion.id,false);
   });
 }
 
