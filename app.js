@@ -575,6 +575,8 @@ async function renderQuestion(){
       session=Array.isArray(started.data)?started.data[0]:started.data;
     }
     currentQuestion=q;
+    const nextButton=$('#nextQuestionButton');
+    if(nextButton){nextButton.disabled=true;nextButton.hidden=true;}
     const qnum=$('#qnum'),qe=$('#question'),ae=$('#answers');
     if(qnum)qnum.textContent=`السؤال ${q.order||q.question_order}`;
     if(qe)qe.textContent=q.text||q.question_text||'';
@@ -598,6 +600,8 @@ function startServerQuestionCountdown(expiresAt,qid,remainingMs){
     const remain=questionDeadline-performance.now();
     timer.textContent=`${Math.max(0,Math.ceil(remain/1000))} ث`;
     if(remain<=0){
+      const nextButton=$('#nextQuestionButton');
+      if(nextButton){nextButton.disabled=true;nextButton.hidden=true;}
       document.querySelectorAll('#answers button').forEach(b=>b.disabled=true);
       clearInterval(waitingTimer);
       void expireServerQuestion(qid);
@@ -635,8 +639,10 @@ async function submitAnswer(question,selectedIndex,selectedButton){
       clearInterval(waitingTimer);
       await renderQuestion();
     }else{
+      const nextButton=$('#nextQuestionButton');
+      if(nextButton){nextButton.hidden=false;nextButton.disabled=false;}
       const timer=$('#questionTimer');
-      if(timer)timer.setAttribute('aria-label','تم حفظ الإجابة، انتظر انتهاء وقت السؤال');
+      if(timer)timer.setAttribute('aria-label','تم حفظ الإجابة؛ يمكنك الانتقال للسؤال التالي');
     }
   }catch(e){
     submitting=false;
@@ -645,6 +651,21 @@ async function submitAnswer(question,selectedIndex,selectedButton){
     if(expired){clearInterval(waitingTimer);waitingTimer=setTimeout(()=>expireServerQuestion(question.id),1000);}
     alert(e.message||'تعذر تسجيل الإجابة.');
   }
+}
+
+
+// The Next button is available only after the answer is saved successfully.
+const nextQuestionButton=$('#nextQuestionButton');
+if(nextQuestionButton){
+  nextQuestionButton.addEventListener('click',async()=>{
+    if(submitting || nextQuestionButton.disabled || nextQuestionButton.hidden)return;
+    submitting=true;
+    nextQuestionButton.disabled=true;
+    nextQuestionButton.hidden=true;
+    clearInterval(waitingTimer);
+    try{await renderQuestion();}
+    finally{submitting=false;}
+  });
 }
 
 
