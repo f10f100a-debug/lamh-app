@@ -125,8 +125,13 @@
 
     <div id="answers" class="answers"></div>
 
+    <button id="nextQuestionButton" type="button" hidden disabled
+      style="width:100%;margin:14px 0;padding:14px;border-radius:12px;background:#159b9a;color:white;font-weight:700;font-size:1.1rem;cursor:pointer">
+      التالي ←
+    </button>
+
     <p class="notice">
-      اختر إجابتك بعناية — يتم اعتماد أول إجابة فقط.
+      بعد تسجيل إجابتك اضغط «التالي»، أو انتظر الانتقال التلقائي عند انتهاء الوقت.
     </p>
 
   </section>
@@ -193,7 +198,7 @@
 
 </main>
 
-<script src="app.js?v=20261105-timer1"></script>
+<script src="app.js?v=20261105-next2"></script>
 <script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}</script>
 
 </body>
