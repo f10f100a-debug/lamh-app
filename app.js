@@ -703,7 +703,7 @@ async function refreshPublishedResult(generation){
     if(correctEl)correctEl.textContent=`${r?.correct??0}/${r?.total_questions??0}`;
     if(timeEl)timeEl.textContent=`${(Number(r?.total_response_ms||0)/1000).toFixed(2)} ث`;
     if(competitionCode&&leaderboardEl){
-      const {data:leaders}=await db.rpc('get_competition_leaderboard',{p_code:competitionCode,p_limit:5});
+      const {data:leaders}=await db.rpc('get_competition_leaderboard',{p_code:competitionCode,p_limit:10000});
       if(generation!==resultGeneration)return;
       if(Array.isArray(leaders)&&leaders.length)leaders.forEach(x=>{
         const row=document.createElement('div');row.className='leader-row';
@@ -711,7 +711,7 @@ async function refreshPublishedResult(generation){
         const id=document.createElement('div');id.className='leader-identity';
         const n=document.createElement('strong');n.textContent=x.full_name||'متسابق';
         const s=document.createElement('small');s.textContent=x.school||'';
-        id.append(n,s);const sc=document.createElement('span');sc.className='leader-score';sc.textContent=`${x.correct_answers??0} صحيحة`;
+        id.append(n,s);const sc=document.createElement('span');sc.className='leader-score';sc.textContent=`${x.correct_answers??0} صحيحة · ${(Number(x.total_response_ms||0)/1000).toFixed(2)} ث`;
         row.append(rk,id,sc);leaderboardEl.appendChild(row);
       }); else leaderboardEl.textContent='لا توجد نتائج مكتملة حتى الآن.';
     }
